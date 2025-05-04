@@ -1,0 +1,4 @@
+[submodule "Plugins/HMDSimulator"]
+	path = Plugins/HMDSimulator
+	url = https://git-ce.rwth-aachen.de/vr-vis/VR-Group/unreal-development/tools/hmd-simulator.git
+	branch = 5.5
