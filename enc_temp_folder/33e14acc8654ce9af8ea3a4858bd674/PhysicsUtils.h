@@ -47,7 +47,7 @@ class LABCOURSE_API FPBDConstraintBase
 public:
     virtual ~FPBDConstraintBase() {}
 
-    virtual void Solve(TArray<FPBDParticle>& particles, float stiffness, float dt) { check(0 && "Must Override this"); }
+    virtual void Solve(TArray<FPBDParticle>& particles, float stiffness, float dt) { /*For Override*/ };
 };
 
 class LABCOURSE_API FPBDCollisionPlane

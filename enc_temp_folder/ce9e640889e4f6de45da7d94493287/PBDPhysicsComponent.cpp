@@ -20,7 +20,7 @@ UPBDPhysicsComponent::UPBDPhysicsComponent()
 void UPBDPhysicsComponent::BeginPlay()
 {
 	Super::BeginPlay();
-	Init();
+
 	// ...
 	
 }
@@ -134,7 +134,7 @@ void UPBDPhysicsComponent::InitConstraints()
 
 void UPBDPhysicsComponent::DrawDebugShapes()
 {
-	UE_LOG(LogTemp, Warning, TEXT("Num Particles / Constraints: %d / %d"), PBDParticles.Num(), PBDConstraints.Num());
+
 	for (FPBDParticle& particle : PBDParticles)
 	{
 		FVector pWorld = UKismetMathLibrary::TransformLocation(GetOwner()->GetActorTransform(), particle.Position);
