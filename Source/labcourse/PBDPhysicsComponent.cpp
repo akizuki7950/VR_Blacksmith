@@ -57,14 +57,19 @@ void UPBDPhysicsComponent::TickComponent(float DeltaTime, ELevelTick TickType, F
 		DrawDebugShapes();
 	}
 
+	UpdateGrabComponents();
 	UpdateKinematics();
 	Simulate(DeltaTime);
 	UpdateOwnerPos();
-
 	// ...
 }
 
 void UPBDPhysicsComponent::UpdateKinematics()
+{
+	
+}
+
+void UPBDPhysicsComponent::UpdateGrabComponents()
 {
 	
 }

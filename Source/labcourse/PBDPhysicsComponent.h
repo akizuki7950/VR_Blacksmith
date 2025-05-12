@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 #include "PhysicsUtils.h"
+#include "PBDGrabComponent.h"
 #include "PBDPhysicsComponent.generated.h"
 
 
@@ -27,6 +28,7 @@ protected:
 	void InitConstraints();
 	void InitCollisionPlanes();
 	void UpdateKinematics();
+	void UpdateGrabComponents();
 	void Simulate(float dt);
 	void UpdateOwnerPos();
 	void ApplyImpulse(FVector Pos, FVector ImpactPulse);
@@ -94,6 +96,7 @@ private:
 	TArray<FPlaneCollisionConstraint*> CollisionConstraintPool;
 	TArray<FPBDParticle> PBDParticles;
 	TArray<FPBDCollisionPlane> CollisionPlanes;
+	TArray<UPBDGrabComponent*> PBDGrabComponents;
 	int Nx, Ny, Nz;
 
 	
