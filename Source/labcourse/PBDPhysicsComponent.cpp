@@ -261,6 +261,16 @@ void UPBDPhysicsComponent::InitCollisionPlanes()
 	}
 }
 
+float UPBDPhysicsComponent::GetEffectiveTemperatureFactorFromCurve(const TSoftObjectPtr<UCurveFloat>& Curve, const float Temperature)
+{
+	if (Curve.IsValid())
+	{
+		return Curve->GetFloatValue(Temperature);
+	}
+
+	return 0.0;
+}
+
 
 void UPBDPhysicsComponent::DrawDebugShapes()
 {
