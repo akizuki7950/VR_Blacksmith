@@ -64,14 +64,21 @@ void UPBDPhysicsComponent::TickComponent(float DeltaTime, ELevelTick TickType, F
 
 void UPBDPhysicsComponent::Simulate(float dt)
 {
-	FTransform ActorTransform = GetOwner()->GetActorTransform();
+	FTransform TOwnerWorld = GetOwner()->GetActorTransform();
+	FTransform TOwnerWorldInv = TOwnerWorld.Inverse();
+
 	FVector Gravity(0, 0, -980);
-	Gravity *= SimulationScale;
+	Gravity = TOwnerWorldInv.TransformVectorNoScale(Gravity) * SimulationScale;
 
 	// Calc predicted positions
 	for(auto& Particle : PBDParticles)
 	{
 		Particle.Velocity += Gravity * dt;
+		if (Particle.InvMass > 0)
+		{
+			Particle.Velocity *= DampingFactor;
+		}
+
 		Particle.PredictedPosition = Particle.Position + Particle.Velocity * dt;
 	}
 
@@ -92,9 +99,6 @@ void UPBDPhysicsComponent::Simulate(float dt)
 			for (auto& Plane : CollisionPlanes)
 			{
 				// Transform plane into simulation space
-				FTransform TOwnerWorld = GetOwner()->GetActorTransform();
-				FTransform TOwnerWorldInv = TOwnerWorld.Inverse();
-
 				FVector PlanePointSimSpace = TOwnerWorldInv.TransformPosition(Plane.Point) * SimulationScale;
 				FVector PlaneNormalSimSpace = TOwnerWorldInv.TransformVectorNoScale(Plane.Normal);
 
@@ -145,7 +149,23 @@ void UPBDPhysicsComponent::Simulate(float dt)
 		pvTan *= TempConstraint->DampingFactor;
 		Particle.Velocity = pvNorm + pvTan;
 	}
-	
+
+	UpdatePlasticity();
+
+}
+
+void UPBDPhysicsComponent::UpdatePlasticity()
+{
+	if (PBDParticles.IsEmpty()) return;
+
+	for (auto Constraint : PBDConstraints)
+	{
+		float AvgTemp = Constraint->CalculateAverageTemperature(PBDParticles);
+		float EffectiveYieldFactor = GetEffectiveTemperatureFactorFromCurve(CachedYieldTemperatureFactorCurve, AvgTemp);
+
+		Constraint->UpdateConstraintPlasticity(PBDParticles, EffectiveYieldFactor);
+
+	}
 
 }
 

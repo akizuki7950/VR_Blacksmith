@@ -72,8 +72,8 @@ public:
     virtual void Solve(TArray<FPBDParticle>& particles, float stiffness, float dt) { check(0 && "Must Override this"); }
     virtual float CalculateAverageTemperature(TArray<FPBDParticle>& particles) { check(0 && "Must Override this"); return 0; }
     virtual float CalculateCurrentStrain(TArray<FPBDParticle>& particles) { check(0 && "Must Override this"); return 0; }
+    virtual void UpdateConstraintPlasticity(TArray<FPBDParticle>& particles, float YieldFactor) { check(0 && "Must Override this"); }
 
-    float BasePBDStiffness;
     float BaseYieldStrain;
 };
 
@@ -103,18 +103,18 @@ public:
     int32 Index1; // 采ま
     int32 Index2;
     float RestLength;
-    float CurrentLength;
     // float Stiffness; // ┪把计肚 Solve
 
     FDistanceConstraint(int32 idx1, int32 idx2, float restLen)
         : Index1(idx1), Index2(idx2), RestLength(restLen) {
-        CurrentLength = RestLength;
+        BaseYieldStrain = restLen * 0.1;
     }
     virtual ~FDistanceConstraint() override{}
 
     virtual void Solve(TArray<FPBDParticle>& particles, float stiffness, float dt) override;
     virtual float CalculateAverageTemperature(TArray<FPBDParticle>& particles) override;
     virtual float CalculateCurrentStrain(TArray<FPBDParticle>& particles) override;
+    virtual void UpdateConstraintPlasticity(TArray<FPBDParticle>& particles, float YieldFactor) override;
 };
 
 class LABCOURSE_API FVolumeConstraint : public FPBDConstraintBase
@@ -144,6 +144,7 @@ public:
     virtual void Solve(TArray<FPBDParticle>& particles, float stiffness, float dt) override;
     virtual float CalculateAverageTemperature(TArray<FPBDParticle>& particles) override;
     virtual float CalculateCurrentStrain(TArray<FPBDParticle>& particles) override;
+    virtual void UpdateConstraintPlasticity(TArray<FPBDParticle>& particles, float YieldFactor) override {};
 };
 
 // ... 临Τ FBendingConstraint 单
@@ -170,5 +171,6 @@ public:
     virtual void Solve(TArray<FPBDParticle>& particles, float stiffness, float dt) override;
     virtual float CalculateAverageTemperature(TArray<FPBDParticle>& particles) override { return 0; }
     virtual float CalculateCurrentStrain(TArray<FPBDParticle>& particles) override { return 0;  }
+    virtual void UpdateConstraintPlasticity(TArray<FPBDParticle>& particles, float YieldFactor) override {};
     
 };

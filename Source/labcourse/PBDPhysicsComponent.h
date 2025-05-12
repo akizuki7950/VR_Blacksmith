@@ -28,6 +28,7 @@ protected:
 	void InitCollisionPlanes();
 	void Simulate(float dt);
 	void ApplyImpulse(FVector Pos, FVector ImpactPulse);
+	void UpdatePlasticity();
 	static float GetEffectiveTemperatureFactorFromCurve(const UCurveFloat* Curve, const float Temperature);
 
 	int32 GetOffset(int32 OffsetX, int32 OffsetY, int32 OffsetZ) const
@@ -52,8 +53,11 @@ public:
 	UPROPERTY(EditAnywhere, DisplayName = "Base Stiffness", Meta = (ClampMin = "0.001", ClampMax = "1.0"))
 	float BaseStiffness = 0.3;
 
+	UPROPERTY(EditAnywhere, DisplayName = "Damping Factor", Meta = (ClampMin = "0.95", ClampMax = "1.0"))
+	float DampingFactor = 0.995f;
+
 	UPROPERTY(EditAnywhere, DisplayName = "Collision Constraint Pool Size", Meta = (ClampMin = "64"))
-	int32 CollisionConstraintPoolSize = 512;
+	int32 CollisionConstraintPoolSize = 768;
 
 	UPROPERTY(EditAnywhere, DisplayName = "Solver Iterations", Meta = (ClampMin = "1", ClampMax = "64"))
 	int32 SolverIterations = 8;

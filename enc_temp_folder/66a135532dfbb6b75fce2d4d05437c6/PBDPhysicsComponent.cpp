@@ -20,9 +20,28 @@ UPBDPhysicsComponent::UPBDPhysicsComponent()
 void UPBDPhysicsComponent::BeginPlay()
 {
 	Super::BeginPlay();
+
 	Init();
-	// ...
-	
+
+	CachedStiffnessTemperatureFactorCurve = nullptr;
+	if (StiffnessTemperatureFactorCurve.IsValid())
+	{
+		CachedStiffnessTemperatureFactorCurve = StiffnessTemperatureFactorCurve.Get();
+		if (!CachedStiffnessTemperatureFactorCurve)
+		{
+			UE_LOG(LogTemp, Error, TEXT("Failed to load Stiffness Curve: %s"), *StiffnessTemperatureFactorCurve.ToString());
+		}
+	}
+
+	CachedYieldTemperatureFactorCurve = nullptr;
+	if (YieldTemperatureFactorCurve.IsValid())
+	{
+		CachedYieldTemperatureFactorCurve = YieldTemperatureFactorCurve.Get();
+		if (!CachedYieldTemperatureFactorCurve)
+		{
+			UE_LOG(LogTemp, Error, TEXT("Failed to load Yield Curve: %s"), *YieldTemperatureFactorCurve.ToString());
+		}
+	}
 }
 
 
@@ -45,14 +64,21 @@ void UPBDPhysicsComponent::TickComponent(float DeltaTime, ELevelTick TickType, F
 
 void UPBDPhysicsComponent::Simulate(float dt)
 {
-	FTransform ActorTransform = GetOwner()->GetActorTransform();
+	FTransform TOwnerWorld = GetOwner()->GetActorTransform();
+	FTransform TOwnerWorldInv = TOwnerWorld.Inverse();
+
 	FVector Gravity(0, 0, -980);
-	Gravity *= SimulationScale;
+	Gravity = TOwnerWorldInv.TransformVectorNoScale(Gravity) * SimulationScale;
 
 	// Calc predicted positions
 	for(auto& Particle : PBDParticles)
 	{
 		Particle.Velocity += Gravity * dt;
+		if (Particle.InvMass > 0)
+		{
+			Particle.Velocity *= DampingFactor;
+		}
+
 		Particle.PredictedPosition = Particle.Position + Particle.Velocity * dt;
 	}
 
@@ -73,9 +99,6 @@ void UPBDPhysicsComponent::Simulate(float dt)
 			for (auto& Plane : CollisionPlanes)
 			{
 				// Transform plane into simulation space
-				FTransform TOwnerWorld = GetOwner()->GetActorTransform();
-				FTransform TOwnerWorldInv = TOwnerWorld.Inverse();
-
 				FVector PlanePointSimSpace = TOwnerWorldInv.TransformPosition(Plane.Point) * SimulationScale;
 				FVector PlaneNormalSimSpace = TOwnerWorldInv.TransformVectorNoScale(Plane.Normal);
 
@@ -97,7 +120,10 @@ void UPBDPhysicsComponent::Simulate(float dt)
 		// Solve permanent constraints
 		for (auto Constraint : PBDConstraints)
 		{
-			Constraint->Solve(PBDParticles, Stiffness, step);
+			float AvgTemp = Constraint->CalculateAverageTemperature(PBDParticles);
+			float EffectiveStiffnessFactor = GetEffectiveTemperatureFactorFromCurve(CachedStiffnessTemperatureFactorCurve, AvgTemp);
+			float EffectiveStiffness = BaseStiffness * EffectiveStiffnessFactor;
+			Constraint->Solve(PBDParticles, EffectiveStiffness, step);
 		}
 
 		// Solve temporary collision constraints
@@ -123,7 +149,20 @@ void UPBDPhysicsComponent::Simulate(float dt)
 		pvTan *= TempConstraint->DampingFactor;
 		Particle.Velocity = pvNorm + pvTan;
 	}
-	
+}
+
+void UPBDPhysicsComponent::UpdatePlasticity()
+{
+	if (PBDParticles.IsEmpty()) return;
+
+	for (auto Constraint : PBDConstraints)
+	{
+		float AvgTemp = Constraint->CalculateAverageTemperature(PBDParticles);
+		float EffectiveYieldFactor = GetEffectiveTemperatureFactorFromCurve(CachedYieldTemperatureFactorCurve, AvgTemp);
+
+		Constraint->UpdateConstraintPlasticity(PBDParticles, EffectiveYieldFactor);
+
+	}
 
 }
 
@@ -261,14 +300,14 @@ void UPBDPhysicsComponent::InitCollisionPlanes()
 	}
 }
 
-float UPBDPhysicsComponent::GetEffectiveTemperatureFactorFromCurve(const TSoftObjectPtr<UCurveFloat>& Curve, const float Temperature)
+float UPBDPhysicsComponent::GetEffectiveTemperatureFactorFromCurve(const UCurveFloat* Curve, const float Temperature)
 {
-	if (Curve.IsValid())
+	if (Curve)
 	{
 		return Curve->GetFloatValue(Temperature);
 	}
 
-	return 0.0;
+	return 1.0;
 }
 
 
@@ -277,7 +316,7 @@ void UPBDPhysicsComponent::DrawDebugShapes()
 	//UE_LOG(LogTemp, Warning, TEXT("Num Particles / Constraints: %d / %d"), PBDParticles.Num(), PBDConstraints.Num());
 	for (FPBDParticle& particle : PBDParticles)
 	{
-		FLinearColor Color = FMath::Lerp(FLinearColor::Black, FLinearColor(200, 0, 0), FMath::Clamp(particle.Temperature / 300.0, 0.0, 1.0));
+		FLinearColor Color = FMath::Lerp(FLinearColor::Black, FLinearColor(0.8f, 0, 0), FMath::Clamp(particle.Temperature / 300.0, 0.0, 1.0));
 		FVector pWorld = GetOwner()->GetActorTransform().TransformPosition(particle.Position / SimulationScale);
 		UKismetSystemLibrary::DrawDebugPoint(this, pWorld, 8.0, Color);
 

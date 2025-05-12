@@ -20,7 +20,7 @@ void FDistanceConstraint::Solve(TArray<FPBDParticle>& particles, float stiffness
 	FPBDParticle& p2 = particles[Index2];
 
 	FVector Delta = p2.PredictedPosition - p1.PredictedPosition;
-	CurrentLength = Delta.Length();
+	float CurrentLength = Delta.Length();
 	FVector Direction = Delta / CurrentLength;
 
 	FVector AdjustLength = (CurrentLength - RestLength) * Direction;
@@ -63,12 +63,25 @@ void FVolumeConstraint::Solve(TArray<FPBDParticle>& particles, float stiffness, 
 
 }
 
+void FDistanceConstraint::UpdateConstraintPlasticity(TArray<FPBDParticle>& particles, float YieldFactor)
+{
+	float CurrentStrain = CalculateCurrentStrain(particles);
+	float EffectiveYieldStrain = YieldFactor * BaseYieldStrain;
+
+	if (FMath::Abs(CurrentStrain) > EffectiveYieldStrain)
+	{
+		float PlasticDeformationAmount = CurrentStrain - FMath::Sign(CurrentStrain) * EffectiveYieldStrain;
+		RestLength += PlasticDeformationAmount;
+	}
+}
+
 float FDistanceConstraint::CalculateAverageTemperature(TArray<FPBDParticle>& particles)
 {
 	return (particles[Index1].Temperature + particles[Index2].Temperature) / 2.0;
 }
 float FDistanceConstraint::CalculateCurrentStrain(TArray<FPBDParticle>& particles)
 {
+	float CurrentLength = (particles[Index1].Position - particles[Index2].Position).Length();
 	return CurrentLength - RestLength;
 }
 
