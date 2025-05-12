@@ -86,7 +86,7 @@ void UPBDPhysicsComponent::Simulate(float dt)
 						FPlaneCollisionConstraint* CollisionConstraint = CollisionConstraintPool.Pop();
 						if (CollisionConstraint)
 						{
-							CollisionConstraint->Set(i, PlaneNormalSimSpace, SD);
+							CollisionConstraint->Set(i, PlaneNormalSimSpace, SD, Plane.FrictionFactor);
 							ActiveCollisionConstraints.Add(CollisionConstraint);
 						}
 					}
@@ -112,6 +112,17 @@ void UPBDPhysicsComponent::Simulate(float dt)
 		Particle.Velocity = (Particle.PredictedPosition - Particle.Position) / dt;
 		Particle.Position = Particle.PredictedPosition;
 	}
+
+	// Friction
+	for (auto& TempConstraint : ActiveCollisionConstraints)
+	{
+		FPBDParticle& Particle = PBDParticles[TempConstraint->Index1];
+		FVector pv = Particle.Velocity;
+		FVector pvNorm = FVector::DotProduct(pv, TempConstraint->CollisionNormal) * TempConstraint->CollisionNormal;
+		FVector pvTan = pv - pvNorm;
+		pvTan *= TempConstraint->DampingFactor;
+		Particle.Velocity = pvNorm + pvTan;
+	}
 	
 
 }
@@ -126,7 +137,7 @@ void UPBDPhysicsComponent::Init()
 void UPBDPhysicsComponent::InitParticles()
 {
 	FVector ND = Dimension / Res;
-	Nx = ND.Y, Ny = ND.Y, Nz = ND.Z;
+	Nx = ND.X, Ny = ND.Y, Nz = ND.Z;
 
 	float interval = Dimension.X / Nx;
 
@@ -142,7 +153,34 @@ void UPBDPhysicsComponent::InitParticles()
 			}
 		}
 	}
-	//UE_LOG(LogTemp, Warning, TEXT("ND: %d %d %d"), Nx, Ny, Nz);
+
+	for (int i = 0; i < Nz; i++)
+	{
+		for (int j = 0; j < Ny; j++)
+		{
+			for (int k = 0; k < Nx; k++)
+			{
+				int32 Idx = GetOffset(k, j, i);
+				int32 nIdx1 = Idx + GetOffset(1, 0, 0);
+				int32 nIdx2 = Idx + GetOffset(0, 1, 0);
+				int32 nIdx3 = Idx + GetOffset(0, 0, 1);
+
+				if (k < Nx - 1)
+				{
+					PBDParticles[Idx].Neighbors.Add(&PBDParticles[nIdx1]);
+				}
+				if (j < Ny - 1)
+				{
+					PBDParticles[Idx].Neighbors.Add(&PBDParticles[nIdx2]);
+				}
+				if (i < Nz - 1)
+				{
+					PBDParticles[Idx].Neighbors.Add(&PBDParticles[nIdx3]);
+				}
+			}
+		}
+	}
+	
 }
 
 void UPBDPhysicsComponent::InitConstraints()
@@ -219,8 +257,18 @@ void UPBDPhysicsComponent::InitCollisionPlanes()
 
 	for (auto PlaneOpt : PlaneOpts)
 	{
-		CollisionPlanes.Add(FPBDCollisionPlane(PlaneOpt.Point, PlaneOpt.Normal));
+		CollisionPlanes.Add(FPBDCollisionPlane(PlaneOpt.Point, PlaneOpt.Normal, PlaneOpt.FrictionFactor));
 	}
+}
+
+float UPBDPhysicsComponent::GetEffectiveTemperatureFactorFromCurve(const TSoftObjectPtr<UCurveFloat>& Curve, const float Temperature)
+{
+	if (Curve.IsValid())
+	{
+		return Curve->GetFloatValue(Temperature);
+	}
+
+	return 0.0;
 }
 
 
@@ -229,8 +277,16 @@ void UPBDPhysicsComponent::DrawDebugShapes()
 	//UE_LOG(LogTemp, Warning, TEXT("Num Particles / Constraints: %d / %d"), PBDParticles.Num(), PBDConstraints.Num());
 	for (FPBDParticle& particle : PBDParticles)
 	{
+		FLinearColor Color = FMath::Lerp(FLinearColor::Black, FLinearColor(200, 0, 0), FMath::Clamp(particle.Temperature / 300.0, 0.0, 1.0));
 		FVector pWorld = GetOwner()->GetActorTransform().TransformPosition(particle.Position / SimulationScale);
-		UKismetSystemLibrary::DrawDebugPoint(this, pWorld, 10.0, FLinearColor::Red);
+		UKismetSystemLibrary::DrawDebugPoint(this, pWorld, 8.0, Color);
+
+		for (auto Neighbor : particle.Neighbors)
+		{
+			FVector nWorld = GetOwner()->GetActorTransform().TransformPosition(Neighbor->Position / SimulationScale);
+			UKismetSystemLibrary::DrawDebugLine(this, pWorld, nWorld, Color);
+		}
+
 	}
 
 }

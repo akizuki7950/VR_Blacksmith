@@ -51,7 +51,7 @@ public:
 
         Velocity = FVector::ZeroVector;
         PredictedPosition = FVector::ZeroVector;
-        Temperature = 0.0;
+        Temperature = 300.0;
 	}
 	~FPBDParticle() {}
 

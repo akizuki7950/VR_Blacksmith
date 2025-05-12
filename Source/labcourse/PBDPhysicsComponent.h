@@ -49,8 +49,8 @@ public:
 	UPROPERTY(EditAnywhere, DisplayName="Simulation Resolution", Meta=(ClampMin="1.0"))
 	float Res = 20.0;
 
-	UPROPERTY(EditAnywhere, DisplayName = "Stiffness", Meta = (ClampMin = "0.001", ClampMax = "1.0"))
-	float Stiffness = 0.3;
+	UPROPERTY(EditAnywhere, DisplayName = "Base Stiffness", Meta = (ClampMin = "0.001", ClampMax = "1.0"))
+	float BaseStiffness = 0.3;
 
 	UPROPERTY(EditAnywhere, DisplayName = "Collision Constraint Pool Size", Meta = (ClampMin = "64"))
 	int32 CollisionConstraintPoolSize = 512;

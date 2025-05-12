@@ -97,7 +97,10 @@ void UPBDPhysicsComponent::Simulate(float dt)
 		// Solve permanent constraints
 		for (auto Constraint : PBDConstraints)
 		{
-			Constraint->Solve(PBDParticles, Stiffness, step);
+			float AvgTemp = Constraint->CalculateAverageTemperature(PBDParticles);
+			float EffectiveStiffnessFactor = GetEffectiveTemperatureFactorFromCurve(StiffnessTemperatureFactorCurve, AvgTemp);
+			float EffectiveStiffness = BaseStiffness * EffectiveStiffnessFactor;
+			Constraint->Solve(PBDParticles, EffectiveStiffness, step);
 		}
 
 		// Solve temporary collision constraints
@@ -268,7 +271,7 @@ float UPBDPhysicsComponent::GetEffectiveTemperatureFactorFromCurve(const TSoftOb
 		return Curve->GetFloatValue(Temperature);
 	}
 
-	return 0.0;
+	return 1.0;
 }
 
 
@@ -277,8 +280,7 @@ void UPBDPhysicsComponent::DrawDebugShapes()
 	//UE_LOG(LogTemp, Warning, TEXT("Num Particles / Constraints: %d / %d"), PBDParticles.Num(), PBDConstraints.Num());
 	for (FPBDParticle& particle : PBDParticles)
 	{
-		FColor Color = FColor::MakeRedToGreenColorFromScalar(1.0 - FMath::Clamp(particle.Temperature / 300.0, 0.0, 1.0));
-		Color = FColor::MakeFromColorTemperature(particle.Temperature);
+		FLinearColor Color = FMath::Lerp(FLinearColor::Black, FLinearColor(0.8f, 0, 0), FMath::Clamp(particle.Temperature / 300.0, 0.0, 1.0));
 		FVector pWorld = GetOwner()->GetActorTransform().TransformPosition(particle.Position / SimulationScale);
 		UKismetSystemLibrary::DrawDebugPoint(this, pWorld, 8.0, Color);
 
