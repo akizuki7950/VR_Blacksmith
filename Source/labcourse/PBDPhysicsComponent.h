@@ -28,9 +28,9 @@ protected:
 	void InitCollisionPlanes();
 	void Simulate(float dt);
 	void ApplyImpulse(FVector Pos, FVector ImpactPulse);
-	static float GetEffectiveTemperatureFactorFromCurve(const TSoftObjectPtr<UCurveFloat>& Curve, const float Temperature);
+	static float GetEffectiveTemperatureFactorFromCurve(const UCurveFloat* Curve, const float Temperature);
 
-	int32 GetOffset(int32 OffsetX, int32 OffsetY, int32 OffsetZ)
+	int32 GetOffset(int32 OffsetX, int32 OffsetY, int32 OffsetZ) const
 	{
 		int32 OX = 1;
 		int32 OY = Nx;
@@ -72,6 +72,12 @@ public:
 
 	UPROPERTY(EditAnywhere, DisplayName = "Yield Temperature Factor Curve")
 	TSoftObjectPtr<UCurveFloat> YieldTemperatureFactorCurve;
+
+	UPROPERTY()
+	UCurveFloat* CachedStiffnessTemperatureFactorCurve;
+
+	UPROPERTY()
+	UCurveFloat* CachedYieldTemperatureFactorCurve;
 
 private:
 	TArray<FPBDConstraintBase*> PBDConstraints;

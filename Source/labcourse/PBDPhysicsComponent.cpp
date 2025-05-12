@@ -20,9 +20,28 @@ UPBDPhysicsComponent::UPBDPhysicsComponent()
 void UPBDPhysicsComponent::BeginPlay()
 {
 	Super::BeginPlay();
+
 	Init();
-	// ...
-	
+
+	CachedStiffnessTemperatureFactorCurve = nullptr;
+	if (StiffnessTemperatureFactorCurve.IsValid())
+	{
+		CachedStiffnessTemperatureFactorCurve = StiffnessTemperatureFactorCurve.Get();
+		if (!CachedStiffnessTemperatureFactorCurve)
+		{
+			UE_LOG(LogTemp, Error, TEXT("Failed to load Stiffness Curve: %s"), *StiffnessTemperatureFactorCurve.ToString());
+		}
+	}
+
+	CachedYieldTemperatureFactorCurve = nullptr;
+	if (YieldTemperatureFactorCurve.IsValid())
+	{
+		CachedYieldTemperatureFactorCurve = YieldTemperatureFactorCurve.Get();
+		if (!CachedYieldTemperatureFactorCurve)
+		{
+			UE_LOG(LogTemp, Error, TEXT("Failed to load Yield Curve: %s"), *YieldTemperatureFactorCurve.ToString());
+		}
+	}
 }
 
 
@@ -98,7 +117,7 @@ void UPBDPhysicsComponent::Simulate(float dt)
 		for (auto Constraint : PBDConstraints)
 		{
 			float AvgTemp = Constraint->CalculateAverageTemperature(PBDParticles);
-			float EffectiveStiffnessFactor = GetEffectiveTemperatureFactorFromCurve(StiffnessTemperatureFactorCurve, AvgTemp);
+			float EffectiveStiffnessFactor = GetEffectiveTemperatureFactorFromCurve(CachedStiffnessTemperatureFactorCurve, AvgTemp);
 			float EffectiveStiffness = BaseStiffness * EffectiveStiffnessFactor;
 			Constraint->Solve(PBDParticles, EffectiveStiffness, step);
 		}
@@ -264,9 +283,9 @@ void UPBDPhysicsComponent::InitCollisionPlanes()
 	}
 }
 
-float UPBDPhysicsComponent::GetEffectiveTemperatureFactorFromCurve(const TSoftObjectPtr<UCurveFloat>& Curve, const float Temperature)
+float UPBDPhysicsComponent::GetEffectiveTemperatureFactorFromCurve(const UCurveFloat* Curve, const float Temperature)
 {
-	if (Curve.IsValid())
+	if (Curve)
 	{
 		return Curve->GetFloatValue(Temperature);
 	}
