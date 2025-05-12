@@ -31,5 +31,6 @@ void UPBDGrabComponent::TickComponent(float DeltaTime, ELevelTick TickType, FAct
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
 	UKismetSystemLibrary::DrawDebugCapsule(this, GetComponentLocation(), 0.0f, Radius, FRotator::ZeroRotator, FLinearColor::Blue);
+	// ...
 }
 
