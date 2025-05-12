@@ -38,14 +38,81 @@ void UPBDPhysicsComponent::TickComponent(float DeltaTime, ELevelTick TickType, F
 		DrawDebugShapes();
 	}
 
-	FTransform ActorTransform = GetOwner()->GetActorTransform();
+	Simulate(DeltaTime);
+
 	// ...
+}
+
+void UPBDPhysicsComponent::Simulate(float dt)
+{
+	FTransform ActorTransform = GetOwner()->GetActorTransform();
+	FVector Gravity(0, 0, -980);
+
+	// Calc predicted positions
+	for(auto& Particle : PBDParticles)
+	{
+		Particle.Velocity += Gravity * dt;
+		Particle.PredictedPosition = Particle.Position + Particle.Velocity * dt;
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("Num Pool: %d"), CollisionConstraintPool.Num());
+
+	// Substep
+	float step = dt / SolverIterations;
+	for (int ite = 0; ite < SolverIterations; ite++)
+	{
+		// Reset collision pool
+		CollisionConstraintPool.Append(ActiveCollisionConstraints);
+		ActiveCollisionConstraints.Empty();
+
+		// Check plane penetration
+		for (int i = 0; i < PBDParticles.Num(); i++)
+		{
+			auto Particle = PBDParticles[i];
+			for (auto& Plane : CollisionPlanes)
+			{
+				float SD = Plane.GetSignedDistance(Particle.PredictedPosition);
+				if (SD < 0)
+				{
+					if (CollisionConstraintPool.Num() > 0) {
+						FPlaneCollisionConstraint* CollisionConstraint = CollisionConstraintPool.Pop();
+						if (CollisionConstraint)
+						{
+							CollisionConstraint->Set(i, Plane.Normal, SD);
+							ActiveCollisionConstraints.Add(CollisionConstraint);
+						}
+					}
+				}
+			}
+		}
+
+		// Solve permanent constraints
+		for (auto Constraint : PBDConstraints)
+		{
+			Constraint->Solve(PBDParticles, 0.8, step);
+		}
+
+		// Solve temporary collision constraints
+		for (auto TempConstraint : ActiveCollisionConstraints)
+		{
+			TempConstraint->Solve(PBDParticles, 1.0, step);
+		}
+	}
+
+	for (auto& Particle : PBDParticles)
+	{
+		Particle.Velocity = (Particle.PredictedPosition - Particle.Position) / dt;
+		Particle.Position = Particle.PredictedPosition;
+	}
+	
+
 }
 
 void UPBDPhysicsComponent::Init()
 {
 	InitParticles();
 	InitConstraints();
+	InitCollisionPlanes();
 }
 
 void UPBDPhysicsComponent::InitParticles()
@@ -62,6 +129,7 @@ void UPBDPhysicsComponent::InitParticles()
 			for (int k = 0; k < Nx; k++)
 			{
 				FVector pos(k * interval, j * interval, i * interval);
+				pos += GetOwner()->GetActorLocation();
 				PBDParticles.Add(FPBDParticle(pos, 1.0));
 			}
 		}
@@ -114,7 +182,7 @@ void UPBDPhysicsComponent::InitConstraints()
 						if (!IsEdgeProcessed)
 						{
 							float Dist = (PBDParticles[Tet[j]].Position - PBDParticles[Tet[k]].Position).Length();
-							FDistanceConstraint NewConstr = FDistanceConstraint(Tet[j], Tet[k], Dist);
+							FDistanceConstraint* NewConstr = new FDistanceConstraint(Tet[j], Tet[k], Dist);
 							PBDConstraints.Add(NewConstr);
 						}
 					}
@@ -122,7 +190,7 @@ void UPBDPhysicsComponent::InitConstraints()
 
 				// Volume Constraint
 				float Vol = GetTetVolume(PBDParticles[Tet[0]].Position, PBDParticles[Tet[1]].Position, PBDParticles[Tet[2]].Position, PBDParticles[Tet[3]].Position);
-				PBDConstraints.Add(FVolumeConstraint(Tet[0], Tet[1], Tet[2], Tet[3], Vol));
+				PBDConstraints.Add(new FVolumeConstraint(Tet[0], Tet[1], Tet[2], Tet[3], Vol));
 			}
 
 		}
@@ -132,13 +200,27 @@ void UPBDPhysicsComponent::InitConstraints()
 
 }
 
+void UPBDPhysicsComponent::InitCollisionPlanes()
+{
+
+	for (int i = 0; i < CollisionConstraintPoolSize; i++)
+	{
+		CollisionConstraintPool.Add(new FPlaneCollisionConstraint());
+	}
+
+	for (auto PlaneOpt : PlaneOpts)
+	{
+		CollisionPlanes.Add(FPBDCollisionPlane(PlaneOpt.Point, PlaneOpt.Normal));
+	}
+}
+
+
 void UPBDPhysicsComponent::DrawDebugShapes()
 {
 	UE_LOG(LogTemp, Warning, TEXT("Num Particles / Constraints: %d / %d"), PBDParticles.Num(), PBDConstraints.Num());
 	for (FPBDParticle& particle : PBDParticles)
 	{
-		FVector pWorld = UKismetMathLibrary::TransformLocation(GetOwner()->GetActorTransform(), particle.Position);
-		UKismetSystemLibrary::DrawDebugPoint(this, pWorld, 10.0, FLinearColor::Red);
+		UKismetSystemLibrary::DrawDebugPoint(this, particle.Position, 10.0, FLinearColor::Red);
 	}
 
 }

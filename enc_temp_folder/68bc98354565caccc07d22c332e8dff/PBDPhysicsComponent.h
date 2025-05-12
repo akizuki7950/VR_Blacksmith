@@ -43,10 +43,10 @@ public:
 	void DrawDebugShapes();
 
 	UPROPERTY(EditAnywhere, DisplayName="Size")
-	FVector Dimension = FVector(100, 100, 100);
+	FVector Dimension = FVector(10, 10, 10);
 
 	UPROPERTY(EditAnywhere, DisplayName="Simulation Resolution", Meta=(ClampMin="1.0"))
-	float Res = 20.0;
+	float Res = 1.0;
 
 	UPROPERTY(EditAnywhere, DisplayName = "Collision Constraint Pool Size", Meta = (ClampMin = "64"))
 	int32 CollisionConstraintPoolSize = 512;

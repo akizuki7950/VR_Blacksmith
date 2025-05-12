@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Chaos/PBDParticles.h"
+#include "PhysicsUtils.generated.h"
 
 /**
  * 
@@ -17,6 +18,21 @@ inline float GetTetVolume(const FVector& V1, const FVector& V2, const FVector& V
 
     return FVector::DotProduct(FVector::CrossProduct(v1v2, v1v3), v1v4) / 6.0;
 }
+
+USTRUCT(Blueprintable, BlueprintType)
+struct FPlaneOpt
+{
+    GENERATED_BODY()
+public:
+
+    FPlaneOpt() : Normal(FVector(0.0, 0.0, 1.0)), Point(FVector::ZeroVector) {};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    FVector Normal;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    FVector Point;
+};
 
 class LABCOURSE_API FPBDParticle
 {
@@ -47,7 +63,7 @@ class LABCOURSE_API FPBDConstraintBase
 public:
     virtual ~FPBDConstraintBase() {}
 
-    virtual void Solve(TArray<FPBDParticle>& particles, float stiffness, float dt) { /*For Override*/ };
+    virtual void Solve(TArray<FPBDParticle>& particles, float stiffness, float dt) { check(0 && "Must Override this"); }
 };
 
 class LABCOURSE_API FPBDCollisionPlane
@@ -55,11 +71,18 @@ class LABCOURSE_API FPBDCollisionPlane
 public:
 
     FPBDCollisionPlane();
-    FPBDCollisionPlane(FVector Pos, FVector Norm) : Normal(Norm), Point(Pos) {}
+    FPBDCollisionPlane(FVector Pos, FVector Norm) : Normal(Norm.Normalize()), Point(Pos) {}
     virtual ~FPBDCollisionPlane() {};
+
+    float GetSignedDistance(const FVector& Pos) const
+    {
+        float SignedDistance = FVector::DotProduct(Pos - Point, Normal);
+        return SignedDistance;
+    }
 
     FVector Normal;
     FVector Point;
+    
 };
 
 class LABCOURSE_API FDistanceConstraint : public FPBDConstraintBase
@@ -99,11 +122,19 @@ class LABCOURSE_API FPlaneCollisionConstraint : public FPBDConstraintBase
 {
 public:
     int32 Index1;
-    FPBDCollisionPlane Plane;
+    FVector CollisionNormal;
+    float PenetrationDepth;
 
-    FPlaneCollisionConstraint(int32 idx1, FPBDCollisionPlane plane) : Index1(idx1), Plane(plane) {}
+    FPlaneCollisionConstraint() : Index1(0), CollisionNormal(FVector::ZeroVector), PenetrationDepth(0) {}
     virtual ~FPlaneCollisionConstraint() override{}
 
-    virtual void Solve(TArray<FPBDParticle>& particles, float stiffness, float dt) override{}
+    void Set(const int32 idx1, const FVector& Normal, const float SD)
+    {
+        Index1 = idx1;
+        CollisionNormal = Normal;
+        PenetrationDepth = -SD;
+    }
+
+    virtual void Solve(TArray<FPBDParticle>& particles, float stiffness, float dt) override;
     
 };
