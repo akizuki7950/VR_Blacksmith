@@ -86,7 +86,7 @@ void UPBDPhysicsComponent::Simulate(float dt)
 						FPlaneCollisionConstraint* CollisionConstraint = CollisionConstraintPool.Pop();
 						if (CollisionConstraint)
 						{
-							CollisionConstraint->Set(i, PlaneNormalSimSpace, SD);
+							CollisionConstraint->Set(i, PlaneNormalSimSpace, SD, Plane.FrictionFactor);
 							ActiveCollisionConstraints.Add(CollisionConstraint);
 						}
 					}
@@ -111,6 +111,17 @@ void UPBDPhysicsComponent::Simulate(float dt)
 	{
 		Particle.Velocity = (Particle.PredictedPosition - Particle.Position) / dt;
 		Particle.Position = Particle.PredictedPosition;
+	}
+
+	// Friction
+	for (auto& TempConstraint : ActiveCollisionConstraints)
+	{
+		FPBDParticle& Particle = PBDParticles[TempConstraint->Index1];
+		FVector pv = Particle.Velocity;
+		FVector pvNorm = FVector::DotProduct(pv, TempConstraint->CollisionNormal) * TempConstraint->CollisionNormal;
+		FVector pvTan = pv - pvNorm;
+		pvTan *= TempConstraint->DampingFactor;
+		Particle.Velocity = pvNorm + pvTan;
 	}
 	
 
@@ -219,7 +230,7 @@ void UPBDPhysicsComponent::InitCollisionPlanes()
 
 	for (auto PlaneOpt : PlaneOpts)
 	{
-		CollisionPlanes.Add(FPBDCollisionPlane(PlaneOpt.Point, PlaneOpt.Normal));
+		CollisionPlanes.Add(FPBDCollisionPlane(PlaneOpt.Point, PlaneOpt.Normal, PlaneOpt.FrictionFactor));
 	}
 }
 

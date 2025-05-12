@@ -71,7 +71,7 @@ class LABCOURSE_API FPBDCollisionPlane
 public:
 
     FPBDCollisionPlane();
-    FPBDCollisionPlane(FVector Pos, FVector Norm) : Normal(Norm.Normalize()), Point(Pos) {}
+    FPBDCollisionPlane(FVector Pos, FVector Norm) : Normal(Norm.GetSafeNormal()), Point(Pos) {}
     virtual ~FPBDCollisionPlane() {};
 
     float GetSignedDistance(const FVector& Pos) const
@@ -98,22 +98,32 @@ public:
     }
     virtual ~FDistanceConstraint() override{}
 
-    virtual void Solve(TArray<FPBDParticle>& particles, float stiffness, float dt) override{}
+    virtual void Solve(TArray<FPBDParticle>& particles, float stiffness, float dt) override;
 };
 
 class LABCOURSE_API FVolumeConstraint : public FPBDConstraintBase
 {
 public:
-    int32 Index1, Index2, Index3, Index4; // 四面體頂點索引
+    int32 Index1, Index2, Index3, Index4;
     float RestVolume;
     // float Stiffness;
 
     FVolumeConstraint(int32 idx1, int32 idx2, int32 idx3, int32 idx4, float restVol)
-        : Index1(idx1), Index2(idx2), Index3(idx3), Index4(idx4), RestVolume(restVol) {
+        : Index1(idx1), Index2(idx2), Index3(idx3), Index4(idx4), RestVolume(restVol)
+	{
+        if (RestVolume < 0)
+        {
+            // Make sure the vertices are in correct order
+            int32 tmp = Index4;
+            Index4 = Index3;
+            Index3 = tmp;
+            RestVolume = -RestVolume;
+        }
+
     }
     virtual ~FVolumeConstraint() override {}
 
-    virtual void Solve(TArray<FPBDParticle>& particles, float stiffness, float dt) override{}
+    virtual void Solve(TArray<FPBDParticle>& particles, float stiffness, float dt) override;
 };
 
 // ... 可能還有 FBendingConstraint 等

@@ -25,13 +25,16 @@ struct FPlaneOpt
     GENERATED_BODY()
 public:
 
-    FPlaneOpt() : Normal(FVector(0.0, 0.0, 1.0)), Point(FVector::ZeroVector) {};
+    FPlaneOpt() : Normal(FVector(0.0, 0.0, 1.0)), Point(FVector::ZeroVector), FrictionFactor(0.5) {};
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
     FVector Normal;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
     FVector Point;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (ClampMin = "0.0", ClampMax = "1.0"))
+    float FrictionFactor;
 };
 
 class LABCOURSE_API FPBDParticle
@@ -71,7 +74,8 @@ class LABCOURSE_API FPBDCollisionPlane
 public:
 
     FPBDCollisionPlane();
-    FPBDCollisionPlane(FVector Pos, FVector Norm) : Normal(Norm.GetSafeNormal()), Point(Pos) {}
+    FPBDCollisionPlane(FVector Pos, FVector Norm, float Friction) : Normal(Norm.GetSafeNormal()), Point(Pos), FrictionFactor(Friction) {}
+    FPBDCollisionPlane(FVector Pos, FVector Norm) : Normal(Norm.GetSafeNormal()), Point(Pos), FrictionFactor(0.5) {}
     virtual ~FPBDCollisionPlane() {};
 
     float GetSignedDistance(const FVector& Pos) const
@@ -82,6 +86,7 @@ public:
 
     FVector Normal;
     FVector Point;
+    float FrictionFactor;
     
 };
 
@@ -134,15 +139,17 @@ public:
     int32 Index1;
     FVector CollisionNormal;
     float PenetrationDepth;
+    float DampingFactor;
 
     FPlaneCollisionConstraint() : Index1(0), CollisionNormal(FVector::ZeroVector), PenetrationDepth(0) {}
     virtual ~FPlaneCollisionConstraint() override{}
 
-    void Set(const int32 idx1, const FVector& Normal, const float SD)
+    void Set(const int32 idx1, const FVector& Normal, const float SD, const float Friction)
     {
         Index1 = idx1;
         CollisionNormal = Normal;
         PenetrationDepth = -SD;
+        DampingFactor = FMath::Clamp(1.0 - Friction, 0.0, 1.0);
     }
 
     virtual void Solve(TArray<FPBDParticle>& particles, float stiffness, float dt) override;
