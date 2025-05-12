@@ -20,7 +20,7 @@ void FDistanceConstraint::Solve(TArray<FPBDParticle>& particles, float stiffness
 	FPBDParticle& p2 = particles[Index2];
 
 	FVector Delta = p2.PredictedPosition - p1.PredictedPosition;
-	float CurrentLength = Delta.Length();
+	CurrentLength = Delta.Length();
 	FVector Direction = Delta / CurrentLength;
 
 	FVector AdjustLength = (CurrentLength - RestLength) * Direction;
@@ -40,11 +40,7 @@ void FVolumeConstraint::Solve(TArray<FPBDParticle>& particles, float stiffness, 
 	FPBDParticle& p3 = particles[Index3];
 	FPBDParticle& p4 = particles[Index4];
 
-	float CurrentVolume = GetTetVolume(p1.PredictedPosition, p2.PredictedPosition, p3.PredictedPosition, p4.PredictedPosition);
-	if (CurrentVolume < 0)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("%.2f"), CurrentVolume);
-	}
+	CurrentVolume = GetTetVolume(p1.PredictedPosition, p2.PredictedPosition, p3.PredictedPosition, p4.PredictedPosition);
 
 	float CVolumeDiff = 6 * (CurrentVolume - RestVolume);
 
@@ -65,4 +61,22 @@ void FVolumeConstraint::Solve(TArray<FPBDParticle>& particles, float stiffness, 
 	p3.PredictedPosition = p3.PredictedPosition + Lambda * p3.InvMass * dC_p3 * stiffness;
 	p4.PredictedPosition = p4.PredictedPosition + Lambda * p4.InvMass * dC_p4 * stiffness;
 
+}
+
+float FDistanceConstraint::CalculateAverageTemperature(TArray<FPBDParticle>& particles)
+{
+	return (particles[Index1].Temperature + particles[Index2].Temperature) / 2.0;
+}
+float FDistanceConstraint::CalculateCurrentStrain(TArray<FPBDParticle>& particles)
+{
+	return CurrentLength - RestLength;
+}
+
+float FVolumeConstraint::CalculateAverageTemperature(TArray<FPBDParticle>& particles)
+{
+	return (particles[Index1].Temperature + particles[Index2].Temperature + particles[Index3].Temperature + particles[Index4].Temperature) / 4.0;
+}
+float FVolumeConstraint::CalculateCurrentStrain(TArray<FPBDParticle>& particles)
+{
+	return CurrentVolume - RestVolume;
 }

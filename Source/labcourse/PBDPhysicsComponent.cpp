@@ -137,7 +137,7 @@ void UPBDPhysicsComponent::Init()
 void UPBDPhysicsComponent::InitParticles()
 {
 	FVector ND = Dimension / Res;
-	Nx = ND.Y, Ny = ND.Y, Nz = ND.Z;
+	Nx = ND.X, Ny = ND.Y, Nz = ND.Z;
 
 	float interval = Dimension.X / Nx;
 
@@ -153,7 +153,34 @@ void UPBDPhysicsComponent::InitParticles()
 			}
 		}
 	}
-	//UE_LOG(LogTemp, Warning, TEXT("ND: %d %d %d"), Nx, Ny, Nz);
+
+	for (int i = 0; i < Nz; i++)
+	{
+		for (int j = 0; j < Ny; j++)
+		{
+			for (int k = 0; k < Nx; k++)
+			{
+				int32 Idx = GetOffset(k, j, i);
+				int32 nIdx1 = Idx + GetOffset(1, 0, 0);
+				int32 nIdx2 = Idx + GetOffset(0, 1, 0);
+				int32 nIdx3 = Idx + GetOffset(0, 0, 1);
+
+				if (k < Nx - 1)
+				{
+					PBDParticles[Idx].Neighbors.Add(&PBDParticles[nIdx1]);
+				}
+				if (j < Ny - 1)
+				{
+					PBDParticles[Idx].Neighbors.Add(&PBDParticles[nIdx2]);
+				}
+				if (i < Nz - 1)
+				{
+					PBDParticles[Idx].Neighbors.Add(&PBDParticles[nIdx3]);
+				}
+			}
+		}
+	}
+	
 }
 
 void UPBDPhysicsComponent::InitConstraints()
@@ -240,8 +267,17 @@ void UPBDPhysicsComponent::DrawDebugShapes()
 	//UE_LOG(LogTemp, Warning, TEXT("Num Particles / Constraints: %d / %d"), PBDParticles.Num(), PBDConstraints.Num());
 	for (FPBDParticle& particle : PBDParticles)
 	{
+		FColor Color = FColor::MakeRedToGreenColorFromScalar(1.0 - FMath::Clamp(particle.Temperature / 300.0, 0.0, 1.0));
+		Color = FColor::MakeFromColorTemperature(particle.Temperature);
 		FVector pWorld = GetOwner()->GetActorTransform().TransformPosition(particle.Position / SimulationScale);
-		UKismetSystemLibrary::DrawDebugPoint(this, pWorld, 10.0, FLinearColor::Red);
+		UKismetSystemLibrary::DrawDebugPoint(this, pWorld, 8.0, Color);
+
+		for (auto Neighbor : particle.Neighbors)
+		{
+			FVector nWorld = GetOwner()->GetActorTransform().TransformPosition(Neighbor->Position / SimulationScale);
+			UKismetSystemLibrary::DrawDebugLine(this, pWorld, nWorld, Color);
+		}
+
 	}
 
 }

@@ -51,6 +51,7 @@ public:
 
         Velocity = FVector::ZeroVector;
         PredictedPosition = FVector::ZeroVector;
+        Temperature = 0.0;
 	}
 	~FPBDParticle() {}
 
@@ -59,6 +60,8 @@ public:
     FVector Velocity;
     float Mass;
     float InvMass;
+    float Temperature;
+    TArray<FPBDParticle*> Neighbors;
 };
 
 class LABCOURSE_API FPBDConstraintBase
@@ -67,6 +70,11 @@ public:
     virtual ~FPBDConstraintBase() {}
 
     virtual void Solve(TArray<FPBDParticle>& particles, float stiffness, float dt) { check(0 && "Must Override this"); }
+    virtual float CalculateAverageTemperature(TArray<FPBDParticle>& particles) { check(0 && "Must Override this"); return 0; }
+    virtual float CalculateCurrentStrain(TArray<FPBDParticle>& particles) { check(0 && "Must Override this"); return 0; }
+
+    float BasePBDStiffness;
+    float BaseYieldStrain;
 };
 
 class LABCOURSE_API FPBDCollisionPlane
@@ -87,7 +95,6 @@ public:
     FVector Normal;
     FVector Point;
     float FrictionFactor;
-    
 };
 
 class LABCOURSE_API FDistanceConstraint : public FPBDConstraintBase
@@ -96,14 +103,18 @@ public:
     int32 Index1; // 采ま
     int32 Index2;
     float RestLength;
+    float CurrentLength;
     // float Stiffness; // ┪把计肚 Solve
 
     FDistanceConstraint(int32 idx1, int32 idx2, float restLen)
         : Index1(idx1), Index2(idx2), RestLength(restLen) {
+        CurrentLength = RestLength;
     }
     virtual ~FDistanceConstraint() override{}
 
     virtual void Solve(TArray<FPBDParticle>& particles, float stiffness, float dt) override;
+    virtual float CalculateAverageTemperature(TArray<FPBDParticle>& particles) override;
+    virtual float CalculateCurrentStrain(TArray<FPBDParticle>& particles) override;
 };
 
 class LABCOURSE_API FVolumeConstraint : public FPBDConstraintBase
@@ -111,6 +122,7 @@ class LABCOURSE_API FVolumeConstraint : public FPBDConstraintBase
 public:
     int32 Index1, Index2, Index3, Index4;
     float RestVolume;
+    float CurrentVolume;
     // float Stiffness;
 
     FVolumeConstraint(int32 idx1, int32 idx2, int32 idx3, int32 idx4, float restVol)
@@ -123,12 +135,15 @@ public:
             Index4 = Index3;
             Index3 = tmp;
             RestVolume = -RestVolume;
+            CurrentVolume = RestVolume;
         }
 
     }
     virtual ~FVolumeConstraint() override {}
 
     virtual void Solve(TArray<FPBDParticle>& particles, float stiffness, float dt) override;
+    virtual float CalculateAverageTemperature(TArray<FPBDParticle>& particles) override;
+    virtual float CalculateCurrentStrain(TArray<FPBDParticle>& particles) override;
 };
 
 // ... 临Τ FBendingConstraint 单
@@ -153,5 +168,7 @@ public:
     }
 
     virtual void Solve(TArray<FPBDParticle>& particles, float stiffness, float dt) override;
+    virtual float CalculateAverageTemperature(TArray<FPBDParticle>& particles) override { return 0; }
+    virtual float CalculateCurrentStrain(TArray<FPBDParticle>& particles) override { return 0;  }
     
 };
