@@ -105,9 +105,9 @@ public:
     float RestLength;
     // float Stiffness; // 或者作為參數傳入 Solve
 
-    FDistanceConstraint(int32 idx1, int32 idx2, float restLen)
+    FDistanceConstraint(int32 idx1, int32 idx2, float restLen, float YieldFactor = 0.1)
         : Index1(idx1), Index2(idx2), RestLength(restLen) {
-        BaseYieldStrain = restLen * 0.1;
+        BaseYieldStrain = restLen * YieldFactor;
     }
     virtual ~FDistanceConstraint() override{}
 

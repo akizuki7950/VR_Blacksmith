@@ -271,7 +271,7 @@ void UPBDPhysicsComponent::InitConstraints()
 						if (!IsEdgeProcessed)
 						{
 							float Dist = (PBDParticles[Tet[j]].Position - PBDParticles[Tet[k]].Position).Length();
-							FDistanceConstraint* NewConstr = new FDistanceConstraint(Tet[j], Tet[k], Dist);
+							FDistanceConstraint* NewConstr = new FDistanceConstraint(Tet[j], Tet[k], Dist, YieldFactor);
 							PBDConstraints.Add(NewConstr);
 						}
 					}
