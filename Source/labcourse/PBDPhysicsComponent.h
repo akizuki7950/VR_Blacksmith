@@ -26,6 +26,7 @@ protected:
 	void InitParticles();
 	void InitConstraints();
 	void InitCollisionPlanes();
+	void UpdateKinematics();
 	void Simulate(float dt);
 	void UpdateOwnerPos();
 	void ApplyImpulse(FVector Pos, FVector ImpactPulse);

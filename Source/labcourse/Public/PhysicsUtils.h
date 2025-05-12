@@ -42,22 +42,33 @@ class LABCOURSE_API FPBDParticle
 public:
 	FPBDParticle(FVector Pos, float mass, bool Kinematic = false) : Position(Pos), Mass(mass), bIsKinematic(Kinematic)
 	{
-        ensure(Mass > 0);
-		if (Mass > 0 && !bIsKinematic)
+        ensure(Mass > 0.0f);
+		if (Mass > 0.0f && !bIsKinematic)
         {
-            InvMass = 1.0 / Mass;
+            InvMass = 1.0f / Mass;
         }
-        else InvMass = 0;
+        else InvMass = 0.0f;
 
         Velocity = FVector::ZeroVector;
         PredictedPosition = Pos;
-        Temperature = 300.0;
+        Temperature = 300.0f;
 	}
 	~FPBDParticle() {}
+
+    void SetKinematic(bool IsKinematic)
+	{
+        bIsKinematic = IsKinematic;
+        if (Mass > 0.0f && !bIsKinematic)
+        {
+            InvMass = 1.0f / Mass;
+        }
+        else InvMass = 0.0f;
+	}
 
 	FVector Position;
     FVector PredictedPosition;
     FVector Velocity;
+    FTransform RelativeOffsetTransform; // For grabbing, kinematic
     float Mass;
     float InvMass;
     float Temperature;
