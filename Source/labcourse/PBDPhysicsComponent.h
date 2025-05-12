@@ -27,6 +27,7 @@ protected:
 	void InitConstraints();
 	void InitCollisionPlanes();
 	void Simulate(float dt);
+	void UpdateOwnerPos();
 	void ApplyImpulse(FVector Pos, FVector ImpactPulse);
 	void UpdatePlasticity();
 	static float GetEffectiveTemperatureFactorFromCurve(const UCurveFloat* Curve, const float Temperature);

@@ -58,6 +58,7 @@ void UPBDPhysicsComponent::TickComponent(float DeltaTime, ELevelTick TickType, F
 	}
 
 	Simulate(DeltaTime);
+	UpdateOwnerPos();
 
 	// ...
 }
@@ -169,6 +170,38 @@ void UPBDPhysicsComponent::UpdatePlasticity()
 
 }
 
+void UPBDPhysicsComponent::UpdateOwnerPos()
+{
+	if (PBDParticles.IsEmpty()) return;
+
+	FVector CenterOfMass = FVector::ZeroVector;
+	float TotalWeight = 0.0f;
+	for (auto& Particle : PBDParticles)
+	{
+		if (Particle.InvMass > 0)
+		{
+			CenterOfMass += Particle.Mass * Particle.Position;
+			TotalWeight += Particle.Mass;
+		}
+	}
+
+	CenterOfMass /= TotalWeight;
+	FVector CenterOfMass_Sim = CenterOfMass;
+
+	FTransform TOwnerWorld = GetOwner()->GetActorTransform();
+	CenterOfMass = TOwnerWorld.TransformPositionNoScale(CenterOfMass / SimulationScale);
+
+	//GetOwner()->AddActorWorldOffset(CenterOfMass, false);
+	GetOwner()->SetActorLocation(CenterOfMass);
+
+	for (auto& Particle : PBDParticles)
+	{
+		Particle.Position -= CenterOfMass_Sim;
+		Particle.PredictedPosition -= CenterOfMass_Sim;
+	}
+}
+
+
 void UPBDPhysicsComponent::Init()
 {
 	InitParticles();
@@ -179,6 +212,7 @@ void UPBDPhysicsComponent::Init()
 void UPBDPhysicsComponent::InitParticles()
 {
 	FVector ND = Dimension / Res;
+	FVector HalfDim = Dimension / 2.0;
 	Nx = ND.X, Ny = ND.Y, Nz = ND.Z;
 
 	float interval = Dimension.X / Nx;
@@ -190,6 +224,7 @@ void UPBDPhysicsComponent::InitParticles()
 			for (int k = 0; k < Nx; k++)
 			{
 				FVector pos(k * interval, j * interval, i * interval);
+				pos -= HalfDim;
 				pos *= SimulationScale;
 				PBDParticles.Add(FPBDParticle(pos, 1.0));
 			}
