@@ -26,9 +26,7 @@ protected:
 	void InitParticles();
 	void InitConstraints();
 	void InitCollisionPlanes();
-	void UpdateKinematics();
 	void Simulate(float dt);
-	void UpdateOwnerPos();
 	void ApplyImpulse(FVector Pos, FVector ImpactPulse);
 	void UpdatePlasticity();
 	static float GetEffectiveTemperatureFactorFromCurve(const UCurveFloat* Curve, const float Temperature);
@@ -54,9 +52,6 @@ public:
 
 	UPROPERTY(EditAnywhere, DisplayName = "Base Stiffness", Meta = (ClampMin = "0.001", ClampMax = "1.0"))
 	float BaseStiffness = 0.3;
-
-	UPROPERTY(EditAnywhere, DisplayName = "Yield Factor", Meta = (ClampMin = "0.001", ClampMax = "1.0"))
-	float YieldFactor = 0.1;
 
 	UPROPERTY(EditAnywhere, DisplayName = "Damping Factor", Meta = (ClampMin = "0.95", ClampMax = "1.0"))
 	float DampingFactor = 0.995f;

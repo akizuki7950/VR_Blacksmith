@@ -57,18 +57,10 @@ void UPBDPhysicsComponent::TickComponent(float DeltaTime, ELevelTick TickType, F
 		DrawDebugShapes();
 	}
 
-	UpdateKinematics();
 	Simulate(DeltaTime);
-	UpdateOwnerPos();
 
 	// ...
 }
-
-void UPBDPhysicsComponent::UpdateKinematics()
-{
-	
-}
-
 
 void UPBDPhysicsComponent::Simulate(float dt)
 {
@@ -81,12 +73,13 @@ void UPBDPhysicsComponent::Simulate(float dt)
 	// Calc predicted positions
 	for(auto& Particle : PBDParticles)
 	{
-		if (!Particle.bIsKinematic)
+		Particle.Velocity += Gravity * dt;
+		if (Particle.InvMass > 0)
 		{
-			Particle.Velocity += Gravity * dt;
 			Particle.Velocity *= DampingFactor;
-			Particle.PredictedPosition = Particle.Position + Particle.Velocity * dt;
 		}
+
+		Particle.PredictedPosition = Particle.Position + Particle.Velocity * dt;
 	}
 
 	//UE_LOG(LogTemp, Warning, TEXT("Num Pool: %d"), CollisionConstraintPool.Num());
@@ -142,11 +135,8 @@ void UPBDPhysicsComponent::Simulate(float dt)
 
 	for (auto& Particle : PBDParticles)
 	{
-		if (!Particle.bIsKinematic)
-		{
-			Particle.Velocity = (Particle.PredictedPosition - Particle.Position) / dt;
-			Particle.Position = Particle.PredictedPosition;
-		}
+		Particle.Velocity = (Particle.PredictedPosition - Particle.Position) / dt;
+		Particle.Position = Particle.PredictedPosition;
 	}
 
 	// Friction
@@ -159,9 +149,6 @@ void UPBDPhysicsComponent::Simulate(float dt)
 		pvTan *= TempConstraint->DampingFactor;
 		Particle.Velocity = pvNorm + pvTan;
 	}
-
-	UpdatePlasticity();
-
 }
 
 void UPBDPhysicsComponent::UpdatePlasticity()
@@ -179,37 +166,6 @@ void UPBDPhysicsComponent::UpdatePlasticity()
 
 }
 
-void UPBDPhysicsComponent::UpdateOwnerPos()
-{
-	if (PBDParticles.IsEmpty()) return;
-
-	FVector CenterOfMass = FVector::ZeroVector;
-	float TotalWeight = 0.0f;
-	for (auto& Particle : PBDParticles)
-	{
-		if (Particle.InvMass > 0)
-		{
-			CenterOfMass += Particle.Mass * Particle.Position;
-			TotalWeight += Particle.Mass;
-		}
-	}
-
-	CenterOfMass /= TotalWeight;
-	FVector CenterOfMass_Sim = CenterOfMass;
-
-	FTransform TOwnerWorld = GetOwner()->GetActorTransform();
-	CenterOfMass = TOwnerWorld.TransformPositionNoScale(CenterOfMass / SimulationScale);
-
-	GetOwner()->SetActorLocation(CenterOfMass);
-
-	for (auto& Particle : PBDParticles)
-	{
-		Particle.Position -= CenterOfMass_Sim;
-		Particle.PredictedPosition -= CenterOfMass_Sim;
-	}
-}
-
-
 void UPBDPhysicsComponent::Init()
 {
 	InitParticles();
@@ -220,7 +176,6 @@ void UPBDPhysicsComponent::Init()
 void UPBDPhysicsComponent::InitParticles()
 {
 	FVector ND = Dimension / Res;
-	FVector HalfDim = Dimension / 2.0;
 	Nx = ND.X, Ny = ND.Y, Nz = ND.Z;
 
 	float interval = Dimension.X / Nx;
@@ -232,7 +187,6 @@ void UPBDPhysicsComponent::InitParticles()
 			for (int k = 0; k < Nx; k++)
 			{
 				FVector pos(k * interval, j * interval, i * interval);
-				pos -= HalfDim;
 				pos *= SimulationScale;
 				PBDParticles.Add(FPBDParticle(pos, 1.0));
 			}
@@ -314,7 +268,7 @@ void UPBDPhysicsComponent::InitConstraints()
 						if (!IsEdgeProcessed)
 						{
 							float Dist = (PBDParticles[Tet[j]].Position - PBDParticles[Tet[k]].Position).Length();
-							FDistanceConstraint* NewConstr = new FDistanceConstraint(Tet[j], Tet[k], Dist, YieldFactor);
+							FDistanceConstraint* NewConstr = new FDistanceConstraint(Tet[j], Tet[k], Dist);
 							PBDConstraints.Add(NewConstr);
 						}
 					}
