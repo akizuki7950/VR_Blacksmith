@@ -47,6 +47,7 @@ void UPBDPhysicsComponent::Simulate(float dt)
 {
 	FTransform ActorTransform = GetOwner()->GetActorTransform();
 	FVector Gravity(0, 0, -980);
+	Gravity *= SimulationScale;
 
 	// Calc predicted positions
 	for(auto& Particle : PBDParticles)
@@ -55,7 +56,7 @@ void UPBDPhysicsComponent::Simulate(float dt)
 		Particle.PredictedPosition = Particle.Position + Particle.Velocity * dt;
 	}
 
-	UE_LOG(LogTemp, Warning, TEXT("Num Pool: %d"), CollisionConstraintPool.Num());
+	//UE_LOG(LogTemp, Warning, TEXT("Num Pool: %d"), CollisionConstraintPool.Num());
 
 	// Substep
 	float step = dt / SolverIterations;
@@ -71,14 +72,21 @@ void UPBDPhysicsComponent::Simulate(float dt)
 			auto Particle = PBDParticles[i];
 			for (auto& Plane : CollisionPlanes)
 			{
-				float SD = Plane.GetSignedDistance(Particle.PredictedPosition);
+				// Transform plane into simulation space
+				FTransform TOwnerWorld = GetOwner()->GetActorTransform();
+				FTransform TOwnerWorldInv = TOwnerWorld.Inverse();
+
+				FVector PlanePointSimSpace = TOwnerWorldInv.TransformPosition(Plane.Point) * SimulationScale;
+				FVector PlaneNormalSimSpace = TOwnerWorldInv.TransformVectorNoScale(Plane.Normal);
+
+				float SD = FVector::DotProduct(Particle.PredictedPosition - PlanePointSimSpace, PlaneNormalSimSpace);
 				if (SD < 0)
 				{
 					if (CollisionConstraintPool.Num() > 0) {
 						FPlaneCollisionConstraint* CollisionConstraint = CollisionConstraintPool.Pop();
 						if (CollisionConstraint)
 						{
-							CollisionConstraint->Set(i, Plane.Normal, SD);
+							CollisionConstraint->Set(i, PlaneNormalSimSpace, SD);
 							ActiveCollisionConstraints.Add(CollisionConstraint);
 						}
 					}
@@ -89,7 +97,7 @@ void UPBDPhysicsComponent::Simulate(float dt)
 		// Solve permanent constraints
 		for (auto Constraint : PBDConstraints)
 		{
-			Constraint->Solve(PBDParticles, 0.8, step);
+			Constraint->Solve(PBDParticles, Stiffness, step);
 		}
 
 		// Solve temporary collision constraints
@@ -129,7 +137,7 @@ void UPBDPhysicsComponent::InitParticles()
 			for (int k = 0; k < Nx; k++)
 			{
 				FVector pos(k * interval, j * interval, i * interval);
-				pos += GetOwner()->GetActorLocation();
+				pos *= SimulationScale;
 				PBDParticles.Add(FPBDParticle(pos, 1.0));
 			}
 		}
@@ -144,16 +152,17 @@ void UPBDPhysicsComponent::InitConstraints()
 	for (int i = 0; i < PBDParticles.Num(); i++) {
 
 		TArray<TArray<int32>> TetrahedronOffsetSets;
-		TetrahedronOffsetSets.Add({ GetOffset(0,0,0), GetOffset(0, 1, 0),  GetOffset(0, 1, 1),  GetOffset(1, 1, 1) });
+		TetrahedronOffsetSets.Add({ GetOffset(0,0,0), GetOffset(0, 1, 0),  GetOffset(1, 1, 1),  GetOffset(0, 1, 1) });
 		TetrahedronOffsetSets.Add({ GetOffset(0,0,0), GetOffset(0, 1, 1),  GetOffset(0, 0, 1),  GetOffset(1, 1, 1) });
-		TetrahedronOffsetSets.Add({ GetOffset(0,0,0), GetOffset(0, 0, 1),  GetOffset(1, 0, 1),  GetOffset(1, 1, 1) });
-		TetrahedronOffsetSets.Add({ GetOffset(0,0,0), GetOffset(1, 0, 1),  GetOffset(1, 0, 0),  GetOffset(1, 1, 1) });
-		TetrahedronOffsetSets.Add({ GetOffset(0,0,0), GetOffset(1, 0, 0),  GetOffset(1, 1, 0),  GetOffset(1, 1, 1) });
-		TetrahedronOffsetSets.Add({ GetOffset(0,0,0), GetOffset(1, 1, 0),  GetOffset(0, 1, 0),  GetOffset(1, 1, 1) });
+		TetrahedronOffsetSets.Add({ GetOffset(0,0,0), GetOffset(0, 0, 1),  GetOffset(1, 1, 1),  GetOffset(1, 0, 1) });
+		TetrahedronOffsetSets.Add({ GetOffset(0,0,0), GetOffset(1, 0, 1),  GetOffset(1, 1, 1),  GetOffset(1, 0, 0) });
+		TetrahedronOffsetSets.Add({ GetOffset(0,0,0), GetOffset(1, 0, 0),  GetOffset(1, 1, 1),  GetOffset(1, 1, 0) });
+		TetrahedronOffsetSets.Add({ GetOffset(0,0,0), GetOffset(1, 1, 0),  GetOffset(1, 1, 1),  GetOffset(0, 1, 0) });
 
 		
-		for (auto TOffset : TetrahedronOffsetSets)
+		for (int t = 0; t < TetrahedronOffsetSets.Num(); t++)
 		{
+			auto TOffset = TetrahedronOffsetSets[t];
 			bool IsTetraValid = true;
 
 			TArray<int32> Tet = TOffset;
@@ -196,7 +205,7 @@ void UPBDPhysicsComponent::InitConstraints()
 		}
 	}
 
-	UE_LOG(LogTemp, Warning, TEXT("Num Constraints: %d"), PBDConstraints.Num());
+	//UE_LOG(LogTemp, Warning, TEXT("Num Constraints: %d"), PBDConstraints.Num());
 
 }
 
@@ -217,10 +226,11 @@ void UPBDPhysicsComponent::InitCollisionPlanes()
 
 void UPBDPhysicsComponent::DrawDebugShapes()
 {
-	UE_LOG(LogTemp, Warning, TEXT("Num Particles / Constraints: %d / %d"), PBDParticles.Num(), PBDConstraints.Num());
+	//UE_LOG(LogTemp, Warning, TEXT("Num Particles / Constraints: %d / %d"), PBDParticles.Num(), PBDConstraints.Num());
 	for (FPBDParticle& particle : PBDParticles)
 	{
-		UKismetSystemLibrary::DrawDebugPoint(this, particle.Position, 10.0, FLinearColor::Red);
+		FVector pWorld = GetOwner()->GetActorTransform().TransformPosition(particle.Position / SimulationScale);
+		UKismetSystemLibrary::DrawDebugPoint(this, pWorld, 10.0, FLinearColor::Red);
 	}
 
 }

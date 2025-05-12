@@ -48,11 +48,17 @@ public:
 	UPROPERTY(EditAnywhere, DisplayName="Simulation Resolution", Meta=(ClampMin="1.0"))
 	float Res = 20.0;
 
+	UPROPERTY(EditAnywhere, DisplayName = "Stiffness", Meta = (ClampMin = "0.001", ClampMax = "1.0"))
+	float Stiffness = 0.3;
+
 	UPROPERTY(EditAnywhere, DisplayName = "Collision Constraint Pool Size", Meta = (ClampMin = "64"))
 	int32 CollisionConstraintPoolSize = 512;
 
 	UPROPERTY(EditAnywhere, DisplayName = "Solver Iterations", Meta = (ClampMin = "1", ClampMax = "64"))
 	int32 SolverIterations = 8;
+
+	UPROPERTY(EditAnywhere, DisplayName = "Simulation Scale", Meta = (ClampMin = "0.001", ClampMax = "1.0"))
+	float SimulationScale = 0.01;
 
 	UPROPERTY(EditAnywhere, DisplayName="Draw Debug Shapes")
 	bool bDrawDebugShapes = false;
