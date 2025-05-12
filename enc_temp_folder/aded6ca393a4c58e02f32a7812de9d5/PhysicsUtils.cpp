@@ -25,8 +25,8 @@ void FDistanceConstraint::Solve(TArray<FPBDParticle>& particles, float stiffness
 
 	FVector AdjustLength = (CurrentLength - RestLength) * Direction;
 
-	float Weight_p1 = p1.InvMass / (p1.InvMass + p2.InvMass + 1e-9f);
-	float Weight_p2 = -p2.InvMass / (p1.InvMass + p2.InvMass + 1e-9f);
+	float Weight_p1 = p1.InvMass / (p1.InvMass + p2.InvMass);
+	float Weight_p2 = -p2.InvMass / (p1.InvMass + p2.InvMass);
 
 	p1.PredictedPosition = p1.PredictedPosition + Weight_p1 * AdjustLength * stiffness;
 	p2.PredictedPosition = p2.PredictedPosition + Weight_p2 * AdjustLength * stiffness;
@@ -66,20 +66,12 @@ void FVolumeConstraint::Solve(TArray<FPBDParticle>& particles, float stiffness, 
 void FDistanceConstraint::UpdateConstraintPlasticity(TArray<FPBDParticle>& particles, float YieldFactor)
 {
 	float CurrentStrain = CalculateCurrentStrain(particles);
-
-	float CurrentHardenedBaseYieldStrain = BaseYieldStrain * (1.0f + AccumulatedPlasticStrain);
-	float EffectiveYieldStrain = YieldFactor * CurrentHardenedBaseYieldStrain;
+	float EffectiveYieldStrain = YieldFactor * BaseYieldStrain;
 
 	if (FMath::Abs(CurrentStrain) > EffectiveYieldStrain)
 	{
 		float PlasticDeformationAmount = CurrentStrain - FMath::Sign(CurrentStrain) * EffectiveYieldStrain;
 		RestLength += PlasticDeformationAmount;
-
-		if (FMath::Abs(InitRestLength) > KINDA_SMALL_NUMBER)
-		{
-			AccumulatedPlasticStrain += FMath::Abs(PlasticDeformationAmount / InitRestLength);
-		}
-
 	}
 }
 

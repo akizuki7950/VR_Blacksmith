@@ -74,13 +74,12 @@ void UPBDPhysicsComponent::Simulate(float dt)
 	// Calc predicted positions
 	for(auto& Particle : PBDParticles)
 	{
-		Particle.Velocity += Gravity * dt;
-		if (Particle.InvMass > 0)
+		if (!Particle.bIsKinematic)
 		{
+			Particle.Velocity += Gravity * dt;
 			Particle.Velocity *= DampingFactor;
+			Particle.PredictedPosition = Particle.Position + Particle.Velocity * dt;
 		}
-
-		Particle.PredictedPosition = Particle.Position + Particle.Velocity * dt;
 	}
 
 	//UE_LOG(LogTemp, Warning, TEXT("Num Pool: %d"), CollisionConstraintPool.Num());
@@ -136,8 +135,11 @@ void UPBDPhysicsComponent::Simulate(float dt)
 
 	for (auto& Particle : PBDParticles)
 	{
-		Particle.Velocity = (Particle.PredictedPosition - Particle.Position) / dt;
-		Particle.Position = Particle.PredictedPosition;
+		if (!Particle.bIsKinematic)
+		{
+			Particle.Velocity = (Particle.PredictedPosition - Particle.Position) / dt;
+			Particle.Position = Particle.PredictedPosition;
+		}
 	}
 
 	// Friction
@@ -191,7 +193,6 @@ void UPBDPhysicsComponent::UpdateOwnerPos()
 	FTransform TOwnerWorld = GetOwner()->GetActorTransform();
 	CenterOfMass = TOwnerWorld.TransformPositionNoScale(CenterOfMass / SimulationScale);
 
-	//GetOwner()->AddActorWorldOffset(CenterOfMass, false);
 	GetOwner()->SetActorLocation(CenterOfMass);
 
 	for (auto& Particle : PBDParticles)

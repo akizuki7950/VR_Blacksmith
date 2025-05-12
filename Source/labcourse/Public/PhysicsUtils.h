@@ -40,17 +40,17 @@ public:
 class LABCOURSE_API FPBDParticle
 {
 public:
-	FPBDParticle(FVector Pos, float mass) : Position(Pos), Mass(mass)
+	FPBDParticle(FVector Pos, float mass, bool Kinematic = false) : Position(Pos), Mass(mass), bIsKinematic(Kinematic)
 	{
         ensure(Mass > 0);
-		if (Mass > 0)
+		if (Mass > 0 && !bIsKinematic)
         {
             InvMass = 1.0 / Mass;
         }
         else InvMass = 0;
 
         Velocity = FVector::ZeroVector;
-        PredictedPosition = FVector::ZeroVector;
+        PredictedPosition = Pos;
         Temperature = 300.0;
 	}
 	~FPBDParticle() {}
@@ -61,6 +61,7 @@ public:
     float Mass;
     float InvMass;
     float Temperature;
+    bool bIsKinematic;
     TArray<FPBDParticle*> Neighbors;
 };
 
@@ -100,14 +101,17 @@ public:
 class LABCOURSE_API FDistanceConstraint : public FPBDConstraintBase
 {
 public:
-    int32 Index1; // 粒子索引
+    int32 Index1;
     int32 Index2;
     float RestLength;
-    // float Stiffness; // 或者作為參數傳入 Solve
+    float InitRestLength;
+    float AccumulatedPlasticStrain;
 
     FDistanceConstraint(int32 idx1, int32 idx2, float restLen, float YieldFactor = 0.1)
         : Index1(idx1), Index2(idx2), RestLength(restLen) {
         BaseYieldStrain = restLen * YieldFactor;
+        InitRestLength = RestLength;
+        AccumulatedPlasticStrain = 0.0f;
     }
     virtual ~FDistanceConstraint() override{}
 
