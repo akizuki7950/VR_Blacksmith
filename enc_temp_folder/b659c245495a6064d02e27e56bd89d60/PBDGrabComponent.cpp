@@ -30,7 +30,6 @@ void UPBDGrabComponent::TickComponent(float DeltaTime, ELevelTick TickType, FAct
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
-	FLinearColor Color = bIsKinematic ? FLinearColor(0.3f, 0.5f, 0.0f) : FLinearColor(0.1f, 0.1f, 0.9f, 0.5f);
-	UKismetSystemLibrary::DrawDebugCapsule(this, GetComponentLocation(), 0.0f, Radius, FRotator::ZeroRotator, Color);
+	UKismetSystemLibrary::DrawDebugCapsule(this, GetComponentLocation(), 0.0f, Radius, FRotator::ZeroRotator, FLinearColor::Blue);
 }
 
