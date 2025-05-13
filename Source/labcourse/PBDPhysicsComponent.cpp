@@ -72,10 +72,10 @@ void UPBDPhysicsComponent::UpdateKinematics(float dt)
 		if (GC->bIsKinematic)
 		{
 			FTransform GrabberCurrentWorldTransform = GC->GrabberToFollow->GetComponentTransform();
-			FVector testPos = GrabberCurrentWorldTransform.TransformPosition(GC->testOffset);
-			FTransform GCTargetWorldTransform = GrabberCurrentWorldTransform * GC->GrabberInitialRelativeTransform;
-			GC->SetWorldRotation(GCTargetWorldTransform.GetRotation());
-			GC->SetWorldLocation(testPos);
+			FVector TargetPos = GrabberCurrentWorldTransform.TransformPosition(GC->GrabberInitialOffsetLocation);
+			FQuat TargetRotation = GrabberCurrentWorldTransform.GetRotation() * GC->GrabberInitialOffsetQuat;
+			GC->SetWorldRotation(TargetRotation, false, nullptr, ETeleportType::TeleportPhysics);
+			GC->SetWorldLocation(TargetPos);
 		}
 	}
 	for (auto& Particle : PBDParticles)
@@ -104,7 +104,7 @@ void UPBDPhysicsComponent::UpdateGrabComponents()
 	}
 }
 
-void UPBDPhysicsComponent::TryGrab(USceneComponent* Grabber, UPBDGrabComponent* GC)
+void UPBDPhysicsComponent::TryGrab(USceneComponent* Grabber, UPBDGrabComponent* GC, bool bIsLeft)
 {
 	GC->Grab(Grabber);
 	FVector GCLocSim = ConvertPositionWorldToSim(GC->GetComponentLocation());
@@ -115,7 +115,36 @@ void UPBDPhysicsComponent::TryGrab(USceneComponent* Grabber, UPBDGrabComponent* 
 		if (Dist <= RadiusSim)
 		{
 			Particle.Grab(GC, ConvertPositionSimToWorld(Particle.Position));
+			if (bIsLeft)
+			{
+				ParticlesGrabbedLeft.Add(&Particle);
+			}
+			else
+			{
+				ParticlesGrabbedLeft.Add(&Particle);
+			}
 		}
+	}
+}
+
+void UPBDPhysicsComponent::TryRelease(USceneComponent* Grabber, UPBDGrabComponent* GC, bool bIsLeft)
+{
+	GC->Release();
+	if (bIsLeft)
+	{
+		for (auto& particle : ParticlesGrabbedLeft)
+		{
+			particle->Release();
+		}
+		ParticlesGrabbedLeft.Empty();
+	}
+	else
+	{
+		for (auto& particle : ParticlesGrabbedRight)
+		{
+			particle->Release();
+		}
+		ParticlesGrabbedRight.Empty();
 	}
 }
 

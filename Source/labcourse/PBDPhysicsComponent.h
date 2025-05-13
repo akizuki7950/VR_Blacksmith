@@ -70,7 +70,10 @@ public:
 	void DrawDebugShapes();
 
 	UFUNCTION(BlueprintCallable)
-	void TryGrab(USceneComponent* Grabber, UPBDGrabComponent* GC);
+	void TryGrab(USceneComponent* Grabber, UPBDGrabComponent* GC, bool bIsLeft);
+
+	UFUNCTION(BlueprintCallable)
+	void TryRelease(USceneComponent* Grabber, UPBDGrabComponent* GC, bool bIsLeft);
 
 	//UFUNCTION(BlueprintCallable)
 	//void ApplyImpulse(FVector Pos, FVector ImpactPulse);
@@ -132,6 +135,8 @@ private:
 	TArray<FPBDParticle> PBDParticles;
 	TArray<FPBDCollisionPlane> CollisionPlanes;
 	TArray<TObjectPtr<UPBDGrabComponent>> PBDGrabComponents;
+	TArray<FPBDParticle*> ParticlesGrabbedLeft;
+	TArray<FPBDParticle*> ParticlesGrabbedRight;
 	int Nx, Ny, Nz;
 
 	

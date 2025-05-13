@@ -33,8 +33,8 @@ public:
 		{
 			GrabberToFollow = Grabber;
 			FTransform GrabberInitWorldTransform = Grabber->GetComponentTransform();
-			testOffset = GrabberInitWorldTransform.InverseTransformPosition(GetComponentLocation());
-			GrabberInitialRelativeTransform = GrabberInitWorldTransform.Inverse() * GetComponentTransform();
+			GrabberInitialOffsetQuat = Grabber->GetComponentQuat().Inverse() * GetComponentQuat();
+			GrabberInitialOffsetLocation = GrabberInitWorldTransform.InverseTransformPosition(GetComponentLocation());
 		}
 	}
 
@@ -52,8 +52,8 @@ public:
 	}
 
 	FPBDParticle* ParticleToFollow = nullptr;
-	FTransform GrabberInitialRelativeTransform;
-	FVector testOffset;
+	FVector GrabberInitialOffsetLocation;
+	FQuat GrabberInitialOffsetQuat;
 	TObjectPtr<USceneComponent> GrabberToFollow;
 	float Radius = 10.0;
 	bool bIsKinematic = false;

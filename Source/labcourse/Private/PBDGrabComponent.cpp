@@ -32,6 +32,11 @@ void UPBDGrabComponent::TickComponent(float DeltaTime, ELevelTick TickType, FAct
 
 	FLinearColor Color = bIsKinematic ? FLinearColor(0.3f, 0.5f, 0.0f) : FLinearColor(0.1f, 0.1f, 0.9f, 0.5f);
 	if (bIsKinematic)
+	{
+		UKismetSystemLibrary::DrawDebugArrow(this, GetComponentLocation(), GetComponentLocation() + GetForwardVector() * 20.0f, 30.0f, FLinearColor::Red);
+		UKismetSystemLibrary::DrawDebugArrow(this, GetComponentLocation(), GetComponentLocation() + GetUpVector() * 20.0f, 30.0f, FLinearColor::Blue);
+		UKismetSystemLibrary::DrawDebugArrow(this, GetComponentLocation(), GetComponentLocation() + GetRightVector() * 20.0f, 30.0f, FLinearColor::Green);
 		UKismetSystemLibrary::DrawDebugCapsule(this, GetComponentLocation(), 0.0f, Radius, FRotator::ZeroRotator, Color);
+	}
 }
 
