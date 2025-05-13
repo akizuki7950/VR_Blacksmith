@@ -72,8 +72,10 @@ void UPBDPhysicsComponent::UpdateKinematics(float dt)
 		if (GC->bIsKinematic)
 		{
 			FTransform GrabberCurrentWorldTransform = GC->GrabberToFollow->GetComponentTransform();
+			FVector testPos = GrabberCurrentWorldTransform.TransformPosition(GC->testOffset);
 			FTransform GCTargetWorldTransform = GrabberCurrentWorldTransform * GC->GrabberInitialRelativeTransform;
-			GC->SetWorldTransform(GCTargetWorldTransform, false, nullptr, ETeleportType::TeleportPhysics);
+			GC->SetWorldRotation(GCTargetWorldTransform.GetRotation());
+			GC->SetWorldLocation(testPos);
 		}
 	}
 	for (auto& Particle : PBDParticles)
@@ -98,12 +100,6 @@ void UPBDPhysicsComponent::UpdateGrabComponents()
 		{
 			FVector pLocWorld = ConvertPositionSimToWorld(GC->ParticleToFollow->Position);
 			GC->SetWorldLocation(pLocWorld);
-		}
-		else
-		{
-			FTransform GrabberCurrentWorldTransform = GC->GrabberToFollow->GetComponentTransform();
-			FTransform GCTargetWorldTransform = GrabberCurrentWorldTransform * GC->GrabberInitialRelativeTransform;
-			GC->SetWorldTransform(GCTargetWorldTransform, false, nullptr, ETeleportType::TeleportPhysics);
 		}
 	}
 }

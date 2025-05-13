@@ -67,6 +67,17 @@ void UPBDPhysicsComponent::TickComponent(float DeltaTime, ELevelTick TickType, F
 
 void UPBDPhysicsComponent::UpdateKinematics(float dt)
 {
+	for (auto& GC : PBDGrabComponents)
+	{
+		if (GC->bIsKinematic)
+		{
+			FTransform GrabberCurrentWorldTransform = GC->GrabberToFollow->GetComponentTransform();
+			FVector testPos = GrabberCurrentWorldTransform.TransformPosition(GC->testOffset);
+			FTransform GCTargetWorldTransform = GrabberCurrentWorldTransform * GC->GrabberInitialRelativeTransform;
+			GC->SetWorldRotation(GCTargetWorldTransform.GetRotation());
+			GC->SetWorldLocation(testPos);
+		}
+	}
 	for (auto& Particle : PBDParticles)
 	{
 		if (Particle.bIsKinematic)
@@ -90,17 +101,12 @@ void UPBDPhysicsComponent::UpdateGrabComponents()
 			FVector pLocWorld = ConvertPositionSimToWorld(GC->ParticleToFollow->Position);
 			GC->SetWorldLocation(pLocWorld);
 		}
-		else
-		{
-			FTransform GrabberCurrentWorldTransform = GC->GrabberToFollow->GetComponentTransform();
-			FTransform GCTargetWorldTransform = GrabberCurrentWorldTransform * GC->GrabberInitialRelativeTransform;
-			GC->SetWorldTransform(GCTargetWorldTransform, false, nullptr, ETeleportType::TeleportPhysics);
-		}
 	}
 }
 
 void UPBDPhysicsComponent::TryGrab(USceneComponent* Grabber, UPBDGrabComponent* GC)
 {
+	GC->Grab(Grabber);
 	FVector GCLocSim = ConvertPositionWorldToSim(GC->GetComponentLocation());
 	float RadiusSim = GC->Radius * SimulationScale;
 	for (auto& Particle : PBDParticles)
@@ -112,7 +118,6 @@ void UPBDPhysicsComponent::TryGrab(USceneComponent* Grabber, UPBDGrabComponent* 
 		}
 	}
 }
-
 
 void UPBDPhysicsComponent::Simulate(float dt)
 {
@@ -420,6 +425,7 @@ void UPBDPhysicsComponent::DrawDebugShapes()
 	for (FPBDParticle& particle : PBDParticles)
 	{
 		FLinearColor Color = FMath::Lerp(FLinearColor::Black, FLinearColor(0.8f, 0, 0), FMath::Clamp(particle.Temperature / 300.0, 0.0, 1.0));
+		if (particle.bIsKinematic)Color = FLinearColor::Green;
 		FVector pWorld = GetOwner()->GetActorTransform().TransformPosition(particle.Position / SimulationScale);
 		UKismetSystemLibrary::DrawDebugPoint(this, pWorld, 8.0, Color);
 
