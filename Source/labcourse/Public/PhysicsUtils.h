@@ -3,7 +3,6 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Chaos/PBDParticles.h"
 #include "PhysicsUtils.generated.h"
 
 /**
@@ -56,6 +55,23 @@ public:
 	}
 	~FPBDParticle() {}
 
+    void Grab(USceneComponent* GC, const FVector& WorldLoc)
+	{
+        SetKinematic(true);
+        if (GC)
+        {
+            GCToFollow = GC;
+	        FTransform GCInitialWorldTransform = GC->GetComponentTransform();
+	        GCInitOffsetWorld = GCInitialWorldTransform.InverseTransformPosition(WorldLoc);
+        }
+	}
+
+    void Release()
+	{
+        SetKinematic(false);
+        GCToFollow = nullptr;
+	}
+
     void SetKinematic(bool IsKinematic)
 	{
         bIsKinematic = IsKinematic;
@@ -69,7 +85,10 @@ public:
 	FVector Position;
     FVector PredictedPosition;
     FVector Velocity;
-    FTransform RelativeOffsetTransform; // For grabbing, kinematic
+
+    FVector GCInitOffsetWorld;
+    USceneComponent* GCToFollow;
+
     float Mass;
     float InvMass;
     float Temperature;

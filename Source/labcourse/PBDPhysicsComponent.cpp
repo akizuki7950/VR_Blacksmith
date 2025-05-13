@@ -57,7 +57,7 @@ void UPBDPhysicsComponent::TickComponent(float DeltaTime, ELevelTick TickType, F
 		DrawDebugShapes();
 	}
 
-	UpdateKinematics();
+	UpdateKinematics(DeltaTime);
 	Simulate(DeltaTime);
 
 	UpdateOwnerPos();
@@ -65,17 +65,51 @@ void UPBDPhysicsComponent::TickComponent(float DeltaTime, ELevelTick TickType, F
 	// ...
 }
 
-void UPBDPhysicsComponent::UpdateKinematics()
+void UPBDPhysicsComponent::UpdateKinematics(float dt)
 {
-	
+	for (auto& Particle : PBDParticles)
+	{
+		if (Particle.bIsKinematic)
+		{
+			FTransform CurrentGCWorldTransform = Particle.GCToFollow->GetComponentTransform();
+			FVector TargetWorldOffset = CurrentGCWorldTransform.TransformPosition(Particle.GCInitOffsetWorld);
+			FVector TargetSimOffset = ConvertPositionWorldToSim(TargetWorldOffset);
+			Particle.PredictedPosition = TargetSimOffset;
+			Particle.Velocity = (Particle.PredictedPosition - Particle.Position) / dt;
+			Particle.Position = Particle.PredictedPosition;
+		}
+	}
 }
 
 void UPBDPhysicsComponent::UpdateGrabComponents()
 {
-	for (auto GrabComponent : PBDGrabComponents)
+	for (auto& GC : PBDGrabComponents)
 	{
-		FVector pLocWorld = ConvertPositionSimToWorld(GrabComponent->ParticleToFollow->Position);
-		GrabComponent->SetWorldLocation(pLocWorld);
+		if (!GC->bIsKinematic)
+		{
+			FVector pLocWorld = ConvertPositionSimToWorld(GC->ParticleToFollow->Position);
+			GC->SetWorldLocation(pLocWorld);
+		}
+		else
+		{
+			FTransform GrabberCurrentWorldTransform = GC->GrabberToFollow->GetComponentTransform();
+			FTransform GCTargetWorldTransform = GrabberCurrentWorldTransform * GC->GrabberInitialRelativeTransform;
+			GC->SetWorldTransform(GCTargetWorldTransform, false, nullptr, ETeleportType::TeleportPhysics);
+		}
+	}
+}
+
+void UPBDPhysicsComponent::TryGrab(USceneComponent* Grabber, UPBDGrabComponent* GC)
+{
+	FVector GCLocSim = ConvertPositionWorldToSim(GC->GetComponentLocation());
+	float RadiusSim = GC->Radius * SimulationScale;
+	for (auto& Particle : PBDParticles)
+	{
+		float Dist = (Particle.Position - GCLocSim).Length();
+		if (Dist <= RadiusSim)
+		{
+			Particle.Grab(GC, ConvertPositionSimToWorld(Particle.Position));
+		}
 	}
 }
 

@@ -25,7 +25,34 @@ public:
 	// Called every frame
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
+	UFUNCTION(BlueprintCallable)
+	void Grab(USceneComponent* Grabber)
+	{
+		SetKinematic(true, Grabber);
+		if (Grabber)
+		{
+			GrabberToFollow = Grabber;
+			FTransform GrabberInitWorldTransform = Grabber->GetComponentTransform();
+			GrabberInitialRelativeTransform = GrabberInitWorldTransform.Inverse() * GetComponentTransform();
+		}
+	}
+
+	UFUNCTION(BlueprintCallable)
+	void Release()
+	{
+		SetKinematic(false, nullptr);
+		GrabberToFollow = nullptr;
+	}
+
+
+	void SetKinematic(bool IsKinematic, USceneComponent* Comp)
+	{
+		bIsKinematic = IsKinematic;
+	}
+
 	FPBDParticle* ParticleToFollow = nullptr;
+	FTransform GrabberInitialRelativeTransform;
+	TObjectPtr<USceneComponent> GrabberToFollow;
 	float Radius = 10.0;
 	bool bIsKinematic = false;
 };

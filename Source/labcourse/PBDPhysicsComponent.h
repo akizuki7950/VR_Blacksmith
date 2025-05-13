@@ -27,11 +27,10 @@ protected:
 	void InitParticles();
 	void InitConstraints();
 	void InitCollisionPlanes();
-	void UpdateKinematics();
+	void UpdateKinematics(float dt);
 	void UpdateGrabComponents();
 	void Simulate(float dt);
 	void UpdateOwnerPos();
-	void ApplyImpulse(FVector Pos, FVector ImpactPulse);
 	void UpdatePlasticity();
 	static float GetEffectiveTemperatureFactorFromCurve(const UCurveFloat* Curve, const float Temperature);
 
@@ -43,7 +42,18 @@ protected:
 	FVector ConvertPositionSimToWorld(const FVector& pos) const
 	{
 		FTransform TOwnerWorld = GetOwner()->GetActorTransform();
-		return TOwnerWorld.TransformPositionNoScale(pos / SimulationScale);
+		return TOwnerWorld.TransformPosition(pos / SimulationScale);
+	}
+
+	FVector ConvertVectorWorldToSim(const FVector& vec) const
+	{
+		FTransform TOwnerWorld = GetOwner()->GetActorTransform();
+		return TOwnerWorld.InverseTransformVectorNoScale(vec) * SimulationScale;
+	}
+	FVector ConvertPositionWorldToSim(const FVector& pos) const
+	{
+		FTransform TOwnerWorld = GetOwner()->GetActorTransform();
+		return TOwnerWorld.InverseTransformPosition(pos) * SimulationScale;
 	}
 
 	int32 GetOffset(int32 OffsetX, int32 OffsetY, int32 OffsetZ) const
@@ -59,6 +69,11 @@ public:
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 	void DrawDebugShapes();
 
+	UFUNCTION(BlueprintCallable)
+	void TryGrab(USceneComponent* Grabber, UPBDGrabComponent* GC);
+
+	//UFUNCTION(BlueprintCallable)
+	//void ApplyImpulse(FVector Pos, FVector ImpactPulse);
 
 	UPROPERTY(EditAnywhere, DisplayName="Size", Category="Simulation Settings")
 	FVector Dimension = FVector(100, 100, 100);
