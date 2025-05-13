@@ -59,14 +59,26 @@ void UPBDPhysicsComponent::TickComponent(float DeltaTime, ELevelTick TickType, F
 
 	UpdateKinematics();
 	Simulate(DeltaTime);
-	UpdateOwnerPos();
 
+	UpdateOwnerPos();
+	UpdateGrabComponents();
 	// ...
 }
 
 void UPBDPhysicsComponent::UpdateKinematics()
 {
 	
+}
+
+void UPBDPhysicsComponent::UpdateGrabComponents()
+{
+	for (auto GrabComponent : PBDGrabComponents)
+	{
+		FVector pLocWorld = ConvertPositionSimToWorld(GrabComponent->ParticleToFollow->Position);
+		UKismetSystemLibrary::DrawDebugPoint(this, pLocWorld, 20.0f, FLinearColor(0.1f, 0.1f, 0.1f));
+		GrabComponent->SetWorldLocation(pLocWorld);
+		
+	}
 }
 
 
@@ -262,6 +274,19 @@ void UPBDPhysicsComponent::InitParticles()
 				{
 					PBDParticles[Idx].Neighbors.Add(&PBDParticles[nIdx3]);
 				}
+
+				// Grab component
+				if (i % GrabComponentInterval == 0 && j % GrabComponentInterval == 0 && k % GrabComponentInterval == 0)
+				{
+					UPBDGrabComponent* NewGC = Cast<UPBDGrabComponent>(GetOwner()->AddComponentByClass(UPBDGrabComponent::StaticClass(), false, FTransform::Identity, false));
+					GetOwner()->AddInstanceComponent(NewGC);
+					PBDGrabComponents.Add(NewGC);
+					NewGC->ParticleToFollow = &(PBDParticles[Idx]);
+					NewGC->Radius = GrabComponentRadius;
+					NewGC->SetAbsolute(true, true, true);
+				}
+
+
 			}
 		}
 	}

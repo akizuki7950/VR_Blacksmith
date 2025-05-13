@@ -37,6 +37,7 @@ public:
     float FrictionFactor;
 };
 
+
 class LABCOURSE_API FPBDParticle
 {
 public:
