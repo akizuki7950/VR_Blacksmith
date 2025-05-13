@@ -75,7 +75,9 @@ void UPBDPhysicsComponent::UpdateGrabComponents()
 	for (auto GrabComponent : PBDGrabComponents)
 	{
 		FVector pLocWorld = ConvertPositionSimToWorld(GrabComponent->ParticleToFollow->Position);
+		UKismetSystemLibrary::DrawDebugPoint(this, pLocWorld, 20.0f, FLinearColor(0.1f, 0.1f, 0.1f));
 		GrabComponent->SetWorldLocation(pLocWorld);
+		
 	}
 }
 

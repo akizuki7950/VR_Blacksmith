@@ -27,5 +27,4 @@ public:
 
 	FPBDParticle* ParticleToFollow = nullptr;
 	float Radius = 10.0;
-	bool bIsKinematic = false;
 };
