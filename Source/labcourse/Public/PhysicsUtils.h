@@ -51,7 +51,8 @@ public:
 
         Velocity = FVector::ZeroVector;
         PredictedPosition = Pos;
-        Temperature = 300.0f;
+        Temperature = 50.0f;
+        AccDelta = FVector::ZeroVector;
 	}
 	~FPBDParticle() {}
 
@@ -75,16 +76,17 @@ public:
     void SetKinematic(bool IsKinematic)
 	{
         bIsKinematic = IsKinematic;
-        if (Mass > 0.0f && !bIsKinematic)
-        {
-            InvMass = 1.0f / Mass;
-        }
-        else InvMass = 0.0f;
+        //if (Mass > 0.0f && !bIsKinematic)
+        //{
+        //    InvMass = 1.0f / Mass;
+       // }
+        //else InvMass = 0.0f;
 	}
 
 	FVector Position;
     FVector PredictedPosition;
     FVector Velocity;
+    FVector AccDelta;
 
     FVector GCInitOffsetWorld;
     USceneComponent* GCToFollow;

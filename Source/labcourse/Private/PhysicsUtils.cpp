@@ -11,6 +11,7 @@ void FPlaneCollisionConstraint::Solve(TArray<FPBDParticle>& particles, float sti
 	{
 		const FVector Delta = PenetrationDepth * CollisionNormal;
 		Particle.PredictedPosition = Particle.PredictedPosition + Delta;
+		//Particle.AccDelta += Delta;
 	}
 }
 
@@ -31,6 +32,9 @@ void FDistanceConstraint::Solve(TArray<FPBDParticle>& particles, float stiffness
 	p1.PredictedPosition = p1.PredictedPosition + Weight_p1 * AdjustLength * stiffness;
 	p2.PredictedPosition = p2.PredictedPosition + Weight_p2 * AdjustLength * stiffness;
 
+	//p1.AccDelta += Weight_p1 * AdjustLength * stiffness;
+	//p2.AccDelta += Weight_p2 * AdjustLength * stiffness;
+
 }
 
 void FVolumeConstraint::Solve(TArray<FPBDParticle>& particles, float stiffness, float dt)
@@ -41,6 +45,8 @@ void FVolumeConstraint::Solve(TArray<FPBDParticle>& particles, float stiffness, 
 	FPBDParticle& p4 = particles[Index4];
 
 	CurrentVolume = GetTetVolume(p1.PredictedPosition, p2.PredictedPosition, p3.PredictedPosition, p4.PredictedPosition);
+
+	//ensure(CurrentVolume > 0.0f);
 
 	float CVolumeDiff = 6 * (CurrentVolume - RestVolume);
 
@@ -60,6 +66,11 @@ void FVolumeConstraint::Solve(TArray<FPBDParticle>& particles, float stiffness, 
 	p2.PredictedPosition = p2.PredictedPosition + Lambda * p2.InvMass * dC_p2 * stiffness;
 	p3.PredictedPosition = p3.PredictedPosition + Lambda * p3.InvMass * dC_p3 * stiffness;
 	p4.PredictedPosition = p4.PredictedPosition + Lambda * p4.InvMass * dC_p4 * stiffness;
+
+	//p1.AccDelta += Lambda * p1.InvMass * dC_p1 * stiffness;
+	//p2.AccDelta += Lambda * p2.InvMass * dC_p2 * stiffness;
+	//p3.AccDelta += Lambda * p3.InvMass * dC_p3 * stiffness;
+	//p4.AccDelta += Lambda * p4.InvMass * dC_p4 * stiffness;
 
 }
 

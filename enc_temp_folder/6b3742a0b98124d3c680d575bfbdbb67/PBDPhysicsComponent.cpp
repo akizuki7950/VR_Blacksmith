@@ -368,8 +368,9 @@ void UPBDPhysicsComponent::InitParticles()
 				// Surface particles
 				if (i == 0 || i == Nz - 1 || j == 0 || j == Ny - 1 || k == 0 || k == Nx - 1)
 				{
+					int32 NewIdx;
 					//UGeometryScriptLibrary_MeshBasicEditFunctions::AddVertexToMesh(DynamicMesh->GetDynamicMesh(), PBDParticles[Idx].Position, NewIdx);
-					SurfaceParticles.Add({ &PBDParticles[Idx], Idx });
+					SurfaceParticles.Add({ &PBDParticles[Idx], NewIdx });
 				}
 
 				// Grab component

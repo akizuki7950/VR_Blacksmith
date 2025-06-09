@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+#include "Components/DynamicMeshComponent.h"
 #include "PhysicsUtils.h"
 #include "PBDGrabComponent.h"
 #include "PBDPhysicsComponent.generated.h"
@@ -27,6 +28,7 @@ protected:
 	void InitParticles();
 	void InitConstraints();
 	void InitCollisionPlanes();
+	void InitDMC();
 	void UpdateKinematics(float dt);
 	void UpdateGrabComponents();
 	void Simulate(float dt);
@@ -78,10 +80,10 @@ public:
 	//UFUNCTION(BlueprintCallable)
 	//void ApplyImpulse(FVector Pos, FVector ImpactPulse);
 
-	UPROPERTY(EditAnywhere, DisplayName="Size", Category="Simulation Settings")
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, DisplayName="Size", Category="Simulation Settings")
 	FVector Dimension = FVector(100, 100, 100);
 
-	UPROPERTY(EditAnywhere, DisplayName="Simulation Resolution", Category = "Simulation Settings", Meta=(ClampMin="1.0"))
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, DisplayName="Simulation Resolution", Category = "Simulation Settings", Meta=(ClampMin="1.0"))
 	float Res = 20.0;
 
 	UPROPERTY(EditAnywhere, DisplayName = "Base Stiffness", Category = "Simulation Settings", Meta = (ClampMin = "0.001", ClampMax = "1.0"))
@@ -90,7 +92,7 @@ public:
 	UPROPERTY(EditAnywhere, DisplayName = "Yield Factor", Category = "Simulation Settings", Meta = (ClampMin = "0.001", ClampMax = "1.0"))
 	float YieldFactor = 0.1;
 
-	UPROPERTY(EditAnywhere, DisplayName = "Damping Factor", Category = "Simulation Settings", Meta = (ClampMin = "0.95", ClampMax = "1.0"))
+	UPROPERTY(EditAnywhere, DisplayName = "Damping Factor", Category = "Simulation Settings", Meta = (ClampMin = "0.9", ClampMax = "1.0"))
 	float DampingFactor = 0.995f;
 
 	UPROPERTY(EditAnywhere, DisplayName = "Collision Constraint Pool Size", Category = "Simulation Settings", Meta = (ClampMin = "64"))
@@ -128,16 +130,21 @@ public:
 	UPROPERTY(EditAnywhere, DisplayName = "Grab Component Radius", Category = "Grab Settings")
 	float GrabComponentRadius = 20.0f;
 
+	UPROPERTY(BlueprintReadWrite)
+	TObjectPtr<UDynamicMeshComponent> DynamicMesh = nullptr;
+
 private:
 	TArray<FPBDConstraintBase*> PBDConstraints;
 	TArray<FPlaneCollisionConstraint*> ActiveCollisionConstraints;
 	TArray<FPlaneCollisionConstraint*> CollisionConstraintPool;
 	TArray<FPBDParticle> PBDParticles;
+	TArray<std::pair<FPBDParticle*, int32>> SurfaceParticles;
 	TArray<FPBDCollisionPlane> CollisionPlanes;
 	TArray<TObjectPtr<UPBDGrabComponent>> PBDGrabComponents;
 	TArray<FPBDParticle*> ParticlesGrabbedLeft;
 	TArray<FPBDParticle*> ParticlesGrabbedRight;
 	int Nx, Ny, Nz;
+	float ConstTimeStep = 1.0f / 90.0f;
 
 	
 	
