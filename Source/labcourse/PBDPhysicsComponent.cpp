@@ -92,7 +92,7 @@ void UPBDPhysicsComponent::UpdateKinematics(float dt)
 			FTransform CurrentGCWorldTransform = Particle.GCToFollow->GetComponentTransform();
 			FVector TargetWorldOffset = CurrentGCWorldTransform.TransformPosition(Particle.GCInitOffsetWorld);
 			FVector TargetSimOffset = ConvertPositionWorldToSim(TargetWorldOffset);
-			Particle.PredictedPosition = FMath::Lerp(Particle.PredictedPosition, TargetSimOffset, 0.3f);
+			Particle.PredictedPosition = FMath::Lerp(Particle.PredictedPosition, TargetSimOffset, 0.5f);
 			Particle.Velocity = (Particle.PredictedPosition - Particle.Position) / dt;
 			Particle.Position = Particle.PredictedPosition;
 		}
@@ -123,6 +123,8 @@ void UPBDPhysicsComponent::UpdateDMC()
 	UGeometryScriptLibrary_MeshBasicEditFunctions::SetAllMeshVertexPositions(DMC->GetDynamicMesh(), PosList);
 	FGeometryScriptCalculateNormalsOptions Opt;
 	UGeometryScriptLibrary_MeshNormalsFunctions::RecomputeNormals(DMC->GetDynamicMesh(), Opt);
+
+	DMC->NotifyMeshUpdated();
 }
 
 
@@ -676,7 +678,7 @@ void UPBDPhysicsComponent::InitDMC()
 
 		int32 VCount = UGeometryScriptLibrary_MeshQueryFunctions::GetVertexCount(DM);
 		int32 FCount = UGeometryScriptLibrary_MeshQueryFunctions::GetNumTriangleIDs(DM);
-		UE_LOG(LogTemp, Warning, TEXT("Vertex Count: %d, Triangle Count: %d"), VCount, FCount);
+		//UE_LOG(LogTemp, Warning, TEXT("Vertex Count: %d, Triangle Count: %d"), VCount, FCount);
 	}
 }
 
