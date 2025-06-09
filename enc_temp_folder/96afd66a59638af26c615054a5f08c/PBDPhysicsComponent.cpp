@@ -6,6 +6,9 @@
 #include "Algo/RandomShuffle.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "GeometryScript/MeshBasicEditFunctions.h"
+#include "GeometryScript/MeshQueryFunctions.h"
+#include "GeometryScript/MeshNormalsFunctions.h"
+#include "GeometryScript/GeometryScriptTypes.h"
 #include "UDynamicMesh.h"
 #include "Kismet/KismetSystemLibrary.h"
 
@@ -336,7 +339,7 @@ void UPBDPhysicsComponent::InitParticles()
 				FVector pos(k * interval, j * interval, i * interval);
 				pos -= HalfDim;
 				pos *= SimulationScale;
-				PBDParticles.Add(FPBDParticle(pos, 1.0));
+				PBDParticles.Add(FPBDParticle(pos, 1.0, FIntVector(k, j, i)));
 			}
 		}
 	}
@@ -348,29 +351,43 @@ void UPBDPhysicsComponent::InitParticles()
 			for (int k = 0; k < Nx; k++)
 			{
 				int32 Idx = GetOffset(k, j, i);
-				int32 nIdx1 = Idx + GetOffset(1, 0, 0);
-				int32 nIdx2 = Idx + GetOffset(0, 1, 0);
-				int32 nIdx3 = Idx + GetOffset(0, 0, 1);
+				int32 nIdxFront = Idx + GetOffset(1, 0, 0);
+				int32 nIdxRight = Idx + GetOffset(0, 1, 0);
+				int32 nIdxUp = Idx + GetOffset(0, 0, 1);
+				int32 nIdxBack = Idx + GetOffset(-1, 0, 0);
+				int32 nIdxLeft = Idx + GetOffset(0, -1, 0);
+				int32 nIdxDown = Idx + GetOffset(0, 0, -1);
 
 				if (k < Nx - 1)
 				{
-					PBDParticles[Idx].Neighbors.Add(&PBDParticles[nIdx1]);
+					PBDParticles[Idx].Neighbors.Add(&PBDParticles[nIdxFront]);
 				}
 				if (j < Ny - 1)
 				{
-					PBDParticles[Idx].Neighbors.Add(&PBDParticles[nIdx2]);
+					PBDParticles[Idx].Neighbors.Add(&PBDParticles[nIdxRight]);
 				}
 				if (i < Nz - 1)
 				{
-					PBDParticles[Idx].Neighbors.Add(&PBDParticles[nIdx3]);
+					PBDParticles[Idx].Neighbors.Add(&PBDParticles[nIdxUp]);
+				}
+
+				if (k > 0)
+				{
+					PBDParticles[Idx].Neighbors.Add(&PBDParticles[nIdxBack]);
+				}
+				if (j > 0)
+				{
+					PBDParticles[Idx].Neighbors.Add(&PBDParticles[nIdxLeft]);
+				}
+				if (i > 0)
+				{
+					PBDParticles[Idx].Neighbors.Add(&PBDParticles[nIdxDown]);
 				}
 
 				// Surface particles
 				if (i == 0 || i == Nz - 1 || j == 0 || j == Ny - 1 || k == 0 || k == Nx - 1)
 				{
-					int32 NewIdx;
-					//UGeometryScriptLibrary_MeshBasicEditFunctions::AddVertexToMesh(DynamicMesh->GetDynamicMesh(), PBDParticles[Idx].Position, NewIdx);
-					SurfaceParticles.Add({ &PBDParticles[Idx], NewIdx });
+					SurfaceParticles.Add({ &PBDParticles[Idx], Idx });
 				}
 
 				// Grab component
@@ -405,7 +422,9 @@ void UPBDPhysicsComponent::InitConstraints()
 		TetrahedronOffsetSets.Add({ GetOffset(0,0,0), GetOffset(1, 0, 0),  GetOffset(1, 1, 1),  GetOffset(1, 1, 0) });
 		TetrahedronOffsetSets.Add({ GetOffset(0,0,0), GetOffset(1, 1, 0),  GetOffset(1, 1, 1),  GetOffset(0, 1, 0) });
 
-		
+		FIntVector pIdx = PBDParticles[i].nIdx;
+		if (pIdx.X >= Nx - 1 || pIdx.Y >= Ny - 1 || pIdx.Z >= Nz - 1)continue;
+
 		for (int t = 0; t < TetrahedronOffsetSets.Num(); t++)
 		{
 			auto TOffset = TetrahedronOffsetSets[t];
@@ -471,11 +490,147 @@ void UPBDPhysicsComponent::InitCollisionPlanes()
 
 void UPBDPhysicsComponent::InitDMC()
 {
-	DynamicMesh = Cast<UDynamicMeshComponent>(GetOwner()->GetComponentByClass(UDynamicMeshComponent::StaticClass()));
+	DMC = Cast<UDynamicMeshComponent>(GetOwner()->GetComponentByClass(UDynamicMeshComponent::StaticClass()));
 
-	if (DynamicMesh->IsValidLowLevel())
+	if (DMC->IsValidLowLevel())
 	{
-		
+		UDynamicMesh* DM = DMC->GetDynamicMesh();
+		for (auto p : SurfaceParticles)
+		{
+			FVector pOwner = ConvertPositionSimToOwner(p.first->Position);
+			UGeometryScriptLibrary_MeshBasicEditFunctions::AddVertexToMesh(DM, pOwner, p.first->DMIndex);
+
+		}
+
+
+		FGeometryScriptTriangleList TriangleList;
+		TriangleList.Reset();
+
+		for (auto p : SurfaceParticles)
+		{
+			FPBDParticle* particle = p.first;
+			int32 IdxGlobal = p.second;
+			int32 IdxSurface = particle->DMIndex;
+			FIntVector nIdx = particle->nIdx;
+
+			TArray<int32> ValidNeighbors;
+			for (auto neighbor : particle->Neighbors)
+			{
+				if (IsSurfaceParticle(neighbor))
+				{
+					ValidNeighbors.Add(GetOffset(neighbor->nIdx));
+				}
+			}
+
+			if (nIdx.X == 0  && nIdx.Y < Ny - 1 && nIdx.Z < Nz - 1)
+			{
+				int32 gIdxUp = IdxGlobal + GetOffset(0, 0, 1);
+				int32 gIdxRight = IdxGlobal + GetOffset(0, 1, 0);
+				int32 gIdxUpRight = IdxGlobal + GetOffset(0, 1, 1);
+
+				int32 sIdx = IdxSurface;
+				int32 sIdxUp = PBDParticles[gIdxUp].DMIndex;
+				int32 sIdxRight = PBDParticles[gIdxRight].DMIndex;
+				int32 sIdxUpRight = PBDParticles[gIdxUpRight].DMIndex;
+
+				TriangleList.List->Add({sIdx, sIdxRight, sIdxUp});
+				TriangleList.List->Add({ sIdxRight, sIdxUpRight, sIdxUp });
+			}
+
+			if (nIdx.X == Nx - 1 && nIdx.Y < Ny - 1 && nIdx.Z < Nz - 1)
+			{
+				int32 gIdxUp = IdxGlobal + GetOffset(0, 0, 1);
+				int32 gIdxRight = IdxGlobal + GetOffset(0, 1, 0);
+				int32 gIdxUpRight = IdxGlobal + GetOffset(0, 1, 1);
+
+				int32 sIdx = IdxSurface;
+				int32 sIdxUp = PBDParticles[gIdxUp].DMIndex;
+				int32 sIdxRight = PBDParticles[gIdxRight].DMIndex;
+				int32 sIdxUpRight = PBDParticles[gIdxUpRight].DMIndex;
+
+				TriangleList.List->Add({ sIdx, sIdxUp, sIdxRight });
+				TriangleList.List->Add({ sIdxRight, sIdxUp, sIdxUpRight });
+			}
+
+			if (nIdx.Y == 0 && nIdx.X < Nx - 1 && nIdx.Z < Nz - 1)
+			{
+				int32 gIdxUp = IdxGlobal + GetOffset(0, 0, 1);
+				int32 gIdxFront = IdxGlobal + GetOffset(1, 0, 0);
+				int32 gIdxUpFront = IdxGlobal + GetOffset(1, 0, 1);
+
+				int32 sIdx = IdxSurface;
+				int32 sIdxUp = PBDParticles[gIdxUp].DMIndex;
+				int32 sIdxFront = PBDParticles[gIdxFront].DMIndex;
+				int32 sIdxUpFront = PBDParticles[gIdxUpFront].DMIndex;
+
+				TriangleList.List->Add({ sIdx, sIdxUpFront, sIdxUp });
+				TriangleList.List->Add({ sIdx, sIdxFront, sIdxUpFront });
+			}
+
+			if (nIdx.Y == Ny - 1 && nIdx.X < Nx - 1 && nIdx.Z < Nz - 1)
+			{
+				int32 gIdxUp = IdxGlobal + GetOffset(0, 0, 1);
+				int32 gIdxRight = IdxGlobal + GetOffset(0, 1, 0);
+				int32 gIdxUpRight = IdxGlobal + GetOffset(0, 1, 1);
+
+				int32 sIdx = IdxSurface;
+				//int32 sIdxUp = PBDParticles[gIdxUp].DMIndex;
+				//int32 sIdxRight = PBDParticles[gIdxRight].DMIndex;
+				//int32 sIdxUpRight = PBDParticles[gIdxUpRight].DMIndex;
+
+				//TriangleList.List->Add({ sIdx, sIdxUp, sIdxRight });
+				//TriangleList.List->Add({ sIdxRight, sIdxUp, sIdxUpRight });
+			}
+
+
+			//UE_LOG(LogTemp, Warning, TEXT("Num neighbors: %d"), particle->Neighbors.Num());
+			/*
+			if (particle->Neighbors.Num() >= 5 )
+			{
+				// Face surface
+				for (int i = 0; i < ValidNeighbors.Num(); i++)
+				{
+					for (int j = i + 1; j < ValidNeighbors.Num(); j++)
+					{
+						int32 idx1 = ValidNeighbors[i];
+						int32 idx2 = ValidNeighbors[j];
+
+						if ((idx1 == IdxRight && idx2 == IdxLeft) || (idx2 == IdxRight && idx1 == IdxLeft))continue;
+						if ((idx1 == IdxUp && idx2 == IdxDown) || (idx2 == IdxUp && idx1 == IdxDown))continue;
+
+						
+
+						int32 idxSurface0 = IdxSurface;
+						int32 idxSurface1 = PBDParticles[idx1].DMIndex;
+						int32 idxSurface2 = PBDParticles[idx2].DMIndex;
+
+						TriangleList.List->Add(FIntVector(idxSurface0, idxSurface1, idxSurface2));
+
+					}
+				}
+			}
+			else if (ValidNeighbors.Num() >= 4)
+			{
+				// Edge surface
+			}
+			else if (ValidNeighbors.Num() >= 3)
+			{
+				// Corner surface
+			}
+			*/
+
+		}
+
+		FGeometryScriptIndexList NewIndicesList;
+		UGeometryScriptLibrary_MeshBasicEditFunctions::AddTrianglesToMesh(DM, TriangleList, NewIndicesList);
+
+		DMC->NotifyMeshVertexAttributesModified();
+		DMC->NotifyMeshModified();
+		DMC->NotifyMeshUpdated();
+
+		int32 VCount = UGeometryScriptLibrary_MeshQueryFunctions::GetVertexCount(DM);
+		int32 FCount = UGeometryScriptLibrary_MeshQueryFunctions::GetNumTriangleIDs(DM);
+		UE_LOG(LogTemp, Warning, TEXT("Vertex Count: %d, Triangle Count: %d"), VCount, FCount);
 	}
 }
 

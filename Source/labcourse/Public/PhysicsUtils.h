@@ -40,7 +40,7 @@ public:
 class LABCOURSE_API FPBDParticle
 {
 public:
-	FPBDParticle(FVector Pos, float mass, bool Kinematic = false) : Position(Pos), Mass(mass), bIsKinematic(Kinematic)
+	FPBDParticle(FVector Pos, float mass, FIntVector nPos, bool Kinematic = false) : Position(Pos), Mass(mass), nIdx(nPos), bIsKinematic(Kinematic)
 	{
         ensure(Mass > 0.0f);
 		if (Mass > 0.0f && !bIsKinematic)
@@ -87,6 +87,7 @@ public:
     FVector PredictedPosition;
     FVector Velocity;
     FVector AccDelta;
+    FIntVector nIdx;
 
     FVector GCInitOffsetWorld;
     USceneComponent* GCToFollow;
@@ -96,6 +97,8 @@ public:
     float Temperature;
     bool bIsKinematic;
     TArray<FPBDParticle*> Neighbors;
+
+    int32 DMIndex;
 };
 
 class LABCOURSE_API FPBDConstraintBase

@@ -34,7 +34,6 @@ protected:
 	void Simulate(float dt);
 	void UpdateOwnerPos();
 	void UpdatePlasticity();
-	void UpdateDMC();
 	static float GetEffectiveTemperatureFactorFromCurve(const UCurveFloat* Curve, const float Temperature);
 
 	FVector ConvertVectorSimToWorld(const FVector& vec) const
