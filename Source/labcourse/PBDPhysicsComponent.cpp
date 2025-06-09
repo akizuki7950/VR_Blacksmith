@@ -121,7 +121,7 @@ void UPBDPhysicsComponent::UpdateDMC()
 		PosList.List->Add(pOwner);
 	}
 	UGeometryScriptLibrary_MeshBasicEditFunctions::SetAllMeshVertexPositions(DMC->GetDynamicMesh(), PosList);
-	FGeometryScriptCalculateNormalsOptions Opt;
+	FGeometryScriptCalculateNormalsOptions Opt(true, true);
 	UGeometryScriptLibrary_MeshNormalsFunctions::RecomputeNormals(DMC->GetDynamicMesh(), Opt);
 
 	DMC->NotifyMeshUpdated();
