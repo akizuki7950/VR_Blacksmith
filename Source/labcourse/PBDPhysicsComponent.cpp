@@ -9,6 +9,7 @@
 #include "GeometryScript/MeshQueryFunctions.h"
 #include "GeometryScript/MeshNormalsFunctions.h"
 #include "GeometryScript/GeometryScriptTypes.h"
+#include "GeometryScript/CollisionFunctions.h"
 #include "UDynamicMesh.h"
 #include "Kismet/KismetSystemLibrary.h"
 
@@ -124,13 +125,48 @@ void UPBDPhysicsComponent::UpdateDMC()
 	FGeometryScriptCalculateNormalsOptions Opt(true, true);
 	UGeometryScriptLibrary_MeshNormalsFunctions::RecomputeNormals(DMC->GetDynamicMesh(), Opt);
 
+	//FGeometryScriptCollisionFromMeshOptions CollisionOpt;
+	//CollisionOpt.Method = EGeometryScriptCollisionGenerationMethod::MinVolumeShapes;
+	//auto SimpleCollision = UGeometryScriptLibrary_CollisionFunctions::GenerateCollisionFromMesh(DMC->GetDynamicMesh(), CollisionOpt);
+	//FGeometryScriptSetSimpleCollisionOptions SCOpt;
+	//UGeometryScriptLibrary_CollisionFunctions::SetSimpleCollisionOfDynamicMeshComponent(SimpleCollision, DMC, SCOpt);
+
 	DMC->NotifyMeshUpdated();
 	//DMC->RecreatePhysicsState();
 }
 
-void UPBDPhysicsComponent::ApplyImpulse(FVector Position, FVector Velocity)
+void UPBDPhysicsComponent::ApplyImpulse(FVector ImpactPos, FVector ImpactVelo, FVector ImpactNormal, float ImpactRadius, float StrengthMult)
 {
-	
+	float Speed = ImpactVelo.Length();
+
+	const float dt = GetWorld()->GetDeltaSeconds();
+	if (dt <= 0.0f) return;
+
+	if (Speed <= 10.0f) return;
+
+	const float ImpactMult = FMath::Max(-FVector::DotProduct(ImpactNormal.GetSafeNormal(), ImpactVelo.GetSafeNormal()), 0);
+	if (ImpactMult <= 0.1f) return;
+
+
+	for (auto& Particle : PBDParticles)
+	{
+		const FVector pWorld = ConvertPositionSimToWorld(Particle.Position);
+		const float Distance = FVector::Dist(pWorld, ImpactPos);
+
+		if (Distance < ImpactRadius)
+		{
+			const float NormalizedDistance = Distance / ImpactRadius;
+			const float Falloff = FMath::Pow(1.0f - NormalizedDistance, 2.0f);
+
+			const FVector Delta = ConvertVectorWorldToSim(ImpactVelo * Falloff * dt * ImpactMult * StrengthMult);
+
+
+			Particle.Position += Delta;
+
+		}
+	}
+
+	//UpdatePlasticity();
 }
 
 

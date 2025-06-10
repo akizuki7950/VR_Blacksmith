@@ -23,7 +23,7 @@ public:
 	void Init();
 
 	UFUNCTION(BlueprintCallable, DisplayName = "Apply Impulse")
-	void ApplyImpulse(FVector Position, FVector Velocity);
+	void ApplyImpulse(FVector ImpactPos, FVector ImpactVelo, FVector ImpactNormal, float ImpactRadius = 20.0f, float StrengthMult = 5.0f);
 
 protected:
 	// Called when the game starts
