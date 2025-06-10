@@ -139,7 +139,7 @@ public:
 	float TempMaximum = 300.0f;
 
 	UPROPERTY(EditAnywhere, DisplayName = "Heating Factor", Category = "Simulation Settings", Meta = (ClampMin = "0.0"))
-	float HeatingFactor = 30.0f;
+	float HeatingFactor = 20.0f;
 
 	UPROPERTY(EditAnywhere, DisplayName = "Heat Dissipation Factor", Category = "Simulation Settings", Meta = (ClampMin = "0.0"))
 	float HeatDissipationFactor = 5.0f;
