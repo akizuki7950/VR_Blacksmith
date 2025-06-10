@@ -125,7 +125,14 @@ void UPBDPhysicsComponent::UpdateDMC()
 	UGeometryScriptLibrary_MeshNormalsFunctions::RecomputeNormals(DMC->GetDynamicMesh(), Opt);
 
 	DMC->NotifyMeshUpdated();
+	//DMC->RecreatePhysicsState();
 }
+
+void UPBDPhysicsComponent::ApplyImpulse(FVector Position, FVector Velocity)
+{
+	
+}
+
 
 
 void UPBDPhysicsComponent::TryGrab(USceneComponent* Grabber, UPBDGrabComponent* GC, bool bIsLeft)
@@ -675,6 +682,7 @@ void UPBDPhysicsComponent::InitDMC()
 		DMC->NotifyMeshVertexAttributesModified();
 		DMC->NotifyMeshModified();
 		DMC->NotifyMeshUpdated();
+		DMC->RecreatePhysicsState();
 
 		int32 VCount = UGeometryScriptLibrary_MeshQueryFunctions::GetVertexCount(DM);
 		int32 FCount = UGeometryScriptLibrary_MeshQueryFunctions::GetNumTriangleIDs(DM);

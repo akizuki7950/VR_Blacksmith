@@ -22,6 +22,9 @@ public:
 	UFUNCTION(BlueprintCallable, DisplayName="Init PBD")
 	void Init();
 
+	UFUNCTION(BlueprintCallable, DisplayName = "Apply Impulse")
+	void ApplyImpulse(FVector Position, FVector Velocity);
+
 protected:
 	// Called when the game starts
 	virtual void BeginPlay() override;
