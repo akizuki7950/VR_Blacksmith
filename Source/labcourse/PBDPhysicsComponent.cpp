@@ -10,6 +10,8 @@
 #include "GeometryScript/MeshNormalsFunctions.h"
 #include "GeometryScript/GeometryScriptTypes.h"
 #include "GeometryScript/CollisionFunctions.h"
+#include "GeometryScript/MeshVertexColorFunctions.h"
+#include "GeometryScript/MeshUVFunctions.h"
 #include "UDynamicMesh.h"
 #include "Kismet/KismetSystemLibrary.h"
 
@@ -70,6 +72,12 @@ void UPBDPhysicsComponent::TickComponent(float DeltaTime, ELevelTick TickType, F
 	UpdateDMC();
 	UpdateOwnerPos();
 	UpdateGrabComponents();
+
+	// Heat
+	for (auto& Particle : PBDParticles)
+	{
+		Particle.Temperature = FMath::Max(0.0f, Particle.Temperature - HeatDissipationFactor * DeltaTime);
+	}
 	// ...
 }
 
@@ -116,14 +124,27 @@ void UPBDPhysicsComponent::UpdateDMC()
 {
 	FGeometryScriptVectorList PosList;
 	PosList.Reset(SurfaceParticles.Num());
+
+	FGeometryScriptColorList ColorList;
+	ColorList.Reset(SurfaceParticles.Num());
+
 	for (auto p : SurfaceParticles)
 	{
 		FVector pOwner = ConvertPositionSimToOwner(p.first->Position);
 		PosList.List->Add(pOwner);
+
+
+		FLinearColor TargetColor = FMath::Lerp(ColdColor, HeatColor, p.first->Temperature / TempMaximum);
+		ColorList.List->Add(TargetColor);
+
 	}
+	UGeometryScriptLibrary_MeshVertexColorFunctions::SetMeshPerVertexColors(DMC->GetDynamicMesh(), ColorList);
 	UGeometryScriptLibrary_MeshBasicEditFunctions::SetAllMeshVertexPositions(DMC->GetDynamicMesh(), PosList);
 	FGeometryScriptCalculateNormalsOptions Opt(true, true);
 	UGeometryScriptLibrary_MeshNormalsFunctions::RecomputeNormals(DMC->GetDynamicMesh(), Opt);
+
+
+
 
 	//FGeometryScriptCollisionFromMeshOptions CollisionOpt;
 	//CollisionOpt.Method = EGeometryScriptCollisionGenerationMethod::MinVolumeShapes;
@@ -162,13 +183,37 @@ void UPBDPhysicsComponent::ApplyImpulse(FVector ImpactPos, FVector ImpactVelo, F
 
 
 			Particle.Position += Delta;
-
 		}
 	}
 
 	//UpdatePlasticity();
 }
 
+
+void UPBDPhysicsComponent::ApplyHeating(FVector HeatPos, float HeatRadius, float StrengthMult)
+{
+	const float dt = GetWorld()->GetDeltaSeconds();
+	if (dt <= 0.0f) return;
+
+	for (auto& Particle : PBDParticles)
+	{
+		const FVector pWorld = ConvertPositionSimToWorld(Particle.Position);
+		const float Distance = FVector::Dist(pWorld, HeatPos);
+
+		if (Distance < HeatRadius)
+		{
+			const float NormalizedDistance = Distance / HeatRadius;
+			const float Falloff = FMath::Pow(1.0f - NormalizedDistance, 2.0f);
+
+			const float Delta = Falloff * dt * HeatingFactor;
+
+			Particle.Temperature = FMath::Min(TempMaximum, Particle.Temperature + Delta);
+
+		}
+	}
+
+	//UpdatePlasticity();
+}
 
 
 void UPBDPhysicsComponent::TryGrab(USceneComponent* Grabber, UPBDGrabComponent* GC, bool bIsLeft)
@@ -715,6 +760,11 @@ void UPBDPhysicsComponent::InitDMC()
 		FGeometryScriptIndexList NewIndicesList;
 		UGeometryScriptLibrary_MeshBasicEditFunctions::AddTrianglesToMesh(DM, TriangleList, NewIndicesList);
 
+		FGeometryScriptXAtlasOptions UVOpt;
+		UGeometryScriptLibrary_MeshUVFunctions::AutoGenerateXAtlasMeshUVs(DM, 0, UVOpt);
+		//UGeometryScriptLibrary_MeshUVFunctions::AutoGenerateXAtlasMeshUVs(DM, 1, UVOpt);
+
+
 		DMC->NotifyMeshVertexAttributesModified();
 		DMC->NotifyMeshModified();
 		DMC->NotifyMeshUpdated();
@@ -754,6 +804,11 @@ void UPBDPhysicsComponent::DrawDebugShapes()
 			UKismetSystemLibrary::DrawDebugLine(this, pWorld, nWorld, Color);
 		}
 
+	}
+
+	for (auto& GC : PBDGrabComponents)
+	{
+		GC->DrawDebugShapes();
 	}
 
 }

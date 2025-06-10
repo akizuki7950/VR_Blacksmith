@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 #include "Components/DynamicMeshComponent.h"
+//#include "Rendering/DrawElementTypes.h"
 #include "PhysicsUtils.h"
 #include "PBDGrabComponent.h"
 #include "PBDPhysicsComponent.generated.h"
@@ -24,6 +25,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, DisplayName = "Apply Impulse")
 	void ApplyImpulse(FVector ImpactPos, FVector ImpactVelo, FVector ImpactNormal, float ImpactRadius = 20.0f, float StrengthMult = 5.0f);
+
+	UFUNCTION(BlueprintCallable, DisplayName = "Apply Heating")
+	void ApplyHeating(FVector HeatPos, float HeatRadius = 20.0f, float StrengthMult = 10.0f);
 
 protected:
 	// Called when the game starts
@@ -131,6 +135,16 @@ public:
 	UPROPERTY(EditAnywhere, DisplayName = "Simulation Scale", Category = "Simulation Settings", Meta = (ClampMin = "0.001", ClampMax = "1.0"))
 	float SimulationScale = 0.01;
 
+	UPROPERTY(EditAnywhere, DisplayName = "Maximum Temperature", Category = "Simulation Settings", Meta = (ClampMin = "0.0"))
+	float TempMaximum = 300.0f;
+
+	UPROPERTY(EditAnywhere, DisplayName = "Heating Factor", Category = "Simulation Settings", Meta = (ClampMin = "0.0"))
+	float HeatingFactor = 20.0f;
+
+	UPROPERTY(EditAnywhere, DisplayName = "Heat Dissipation Factor", Category = "Simulation Settings", Meta = (ClampMin = "0.0"))
+	float HeatDissipationFactor = 5.0f;
+
+
 	UPROPERTY(EditAnywhere, Category = "Debug Settings", DisplayName="Draw Debug Shapes")
 	bool bDrawDebugShapes = false;
 
@@ -150,7 +164,6 @@ public:
 	UCurveFloat* CachedYieldTemperatureFactorCurve;
 
 
-
 	UPROPERTY(EditAnywhere, DisplayName = "Grab Component Interval", Category = "Grab Settings")
 	int32 GrabComponentInterval = 2;
 
@@ -159,6 +172,11 @@ public:
 
 	UPROPERTY(BlueprintReadWrite)
 	TObjectPtr<UDynamicMeshComponent> DMC= nullptr;
+
+	UPROPERTY(EditAnywhere, Category = "Rendering")
+	FLinearColor HeatColor;
+	UPROPERTY(EditAnywhere, Category = "Rendering")
+	FLinearColor ColdColor;
 
 private:
 	TArray<FPBDConstraintBase*> PBDConstraints;
