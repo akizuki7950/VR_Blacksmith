@@ -179,7 +179,7 @@ void UPBDPhysicsComponent::ApplyImpulse(FVector ImpactPos, FVector ImpactVelo, F
 			const float NormalizedDistance = Distance / ImpactRadius;
 			const float Falloff = FMath::Pow(1.0f - NormalizedDistance, 2.0f);
 
-			const FVector Delta = ConvertVectorWorldToSim(ImpactVelo * Falloff * dt * ImpactMult * StrengthMult);
+			const FVector Delta = ConvertVectorWorldToSim(ImpactVelo * Falloff * dt * StrengthMult * ImpactMult);
 
 
 			Particle.Position += Delta;
