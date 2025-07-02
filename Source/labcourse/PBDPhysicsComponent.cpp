@@ -205,7 +205,7 @@ void UPBDPhysicsComponent::ApplyHeating(FVector HeatPos, float HeatRadius, float
 			const float NormalizedDistance = Distance / HeatRadius;
 			const float Falloff = FMath::Pow(1.0f - NormalizedDistance, 2.0f);
 
-			const float Delta = Falloff * dt * HeatingFactor;
+			const float Delta = Falloff * dt * HeatingFactor * StrengthMult;
 
 			Particle.Temperature = FMath::Min(TempMaximum, Particle.Temperature + Delta);
 
