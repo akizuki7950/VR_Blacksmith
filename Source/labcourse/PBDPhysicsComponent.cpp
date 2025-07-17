@@ -186,7 +186,7 @@ void UPBDPhysicsComponent::ApplyImpulse(FVector ImpactPos, FVector ImpactVelo, F
 		}
 	}
 
-	//UpdatePlasticity();
+	UpdatePlasticity();
 }
 
 

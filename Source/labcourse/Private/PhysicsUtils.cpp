@@ -79,7 +79,7 @@ void FDistanceConstraint::UpdateConstraintPlasticity(TArray<FPBDParticle>& parti
 	float CurrentStrain = CalculateCurrentStrain(particles);
 
 	float CurrentHardenedBaseYieldStrain = BaseYieldStrain * (1.0f + AccumulatedPlasticStrain);
-	float EffectiveYieldStrain = YieldFactor * CurrentHardenedBaseYieldStrain;
+	float EffectiveYieldStrain = YieldFactor * BaseYieldStrain;// * CurrentHardenedBaseYieldStrain;
 
 	if (FMath::Abs(CurrentStrain) > EffectiveYieldStrain)
 	{
